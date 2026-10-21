@@ -1,4 +1,5 @@
 # Nexmove Project Plan
+Team B, Codesaviours E-Training internship. Stack: Next.js, Express, MongoDB.
 
 ## 1. Sitemap
 
