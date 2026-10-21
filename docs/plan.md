@@ -21,3 +21,14 @@
 - **Post:** title, slug, content, category
 - **Faq:** question, answer
 - **Message:** name, phone, email, text
+
+
+## 3. API List
+
+- POST /api/auth/signup, POST /api/auth/login, POST /api/auth/forgot-password
+- GET, POST, PUT, DELETE: /api/services, /api/conditions, /api/packages, /api/therapists, /api/posts, /api/faqs
+- POST /api/messages (public), GET /api/messages (admin)
+- GET /api/slots?therapist=&service=&date=
+- POST /api/appointments, GET /api/appointments (own), PUT /api/appointments/:id (cancel, reschedule, status)
+- POST /api/reviews, PUT /api/reviews/:id/approve (admin)
+- POST /api/chat, POST /api/pain-assessment
