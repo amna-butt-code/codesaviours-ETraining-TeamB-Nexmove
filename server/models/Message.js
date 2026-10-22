@@ -23,7 +23,7 @@ const messageSchema = new mongoose.Schema(
       match: [/^\+?[0-9\s\-()]{7,20}$/, "That phone number doesn't look right"],
     },
     subject: { type: String, trim: true, maxlength: [150, "Subject is too long"] },
-    message: {
+    text: {
       type: String,
       required: [true, "Please write a message"],
       trim: true,

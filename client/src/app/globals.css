@@ -1,11 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --color-primary: #0f766e;
-  --color-secondary: #14b8a6;
-  --color-dark: #134e4a;
-  --color-light: #f0fdfa;
+  /* Nexmove brand palette (approximated from the logo gradients) */
+  --color-primary: #16848e;   /* teal: buttons, the "Move" colour */
+  --color-secondary: #2fb8a7; /* aqua: accents, icons, highlights */
+  --color-dark: #0a2350;      /* navy: headings, dark sections */
+  --color-blue: #0575a8;      /* links, secondary buttons */
+  --color-deep-blue: #023f86; /* dark accents */
+
   --color-text: #1f2937;
+  --color-light: #f8fafc;
+
+  /* Layout */
+  --container-width: 1200px;
+  --section-spacing: 5rem;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
