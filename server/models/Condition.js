@@ -2,12 +2,12 @@ const mongoose = require("mongoose");
 
 const conditionSchema = new mongoose.Schema(
   {
-    name: {
+    title: {
       type: String,
-      required: [true, "Condition name is required"],
+      required: [true, "Condition title is required"],
       trim: true,
-      minlength: [2, "Condition name is too short"],
-      maxlength: [120, "Condition name must be 120 characters or fewer"],
+      minlength: [2, "Condition title is too short"],
+      maxlength: [120, "Condition title must be 120 characters or fewer"],
     },
     slug: {
       type: String,
@@ -44,6 +44,6 @@ const conditionSchema = new mongoose.Schema(
 );
 
 // Fast listing of published conditions in alphabetical order
-conditionSchema.index({ isPublished: 1, name: 1 });
+conditionSchema.index({ isPublished: 1, title: 1 });
 
 module.exports = mongoose.model("Condition", conditionSchema);
