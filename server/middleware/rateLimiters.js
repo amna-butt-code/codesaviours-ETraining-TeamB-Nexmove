@@ -8,3 +8,15 @@ exports.readLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: "Too many requests. Please wait a moment and try again." },
 });
+
+// Contact form: max 5 messages per IP per hour
+exports.contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "You've sent a few messages recently. Please try again later, or call us directly.",
+  },
+});
