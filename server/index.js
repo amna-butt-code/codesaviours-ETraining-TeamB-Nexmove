@@ -2,6 +2,7 @@ require("dotenv").config({
   path: "../.env.example",
 });
 const connectDB = require("./db");
+const serviceRoutes = require("./routes/serviceRoutes");
 
 
 const express = require("express");
@@ -15,7 +16,14 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", project: "Nexmove" });
 });
 
+
+app.use("/api/services", serviceRoutes);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 connectDB();
+
+
+
+
