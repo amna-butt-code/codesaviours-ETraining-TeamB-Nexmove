@@ -379,6 +379,168 @@
       ]
     },
     {
+      "name": "Posts",
+      "item": [
+        {
+          "name": "List posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Has posts (run the seed script first)\", () => pm.expect(b.data.length).to.be.above(0));",
+                  "pm.test(\"Cards carry no full content, author or internal flags\", () => { const p = b.data[0]; pm.expect(p).to.include.keys(\"title\",\"slug\",\"excerpt\",\"category\",\"publishedAt\"); pm.expect(p).to.not.have.any.keys(\"content\",\"author\",\"isPublished\"); });",
+                  "pm.test(\"Newest first\", () => { const d = b.data.map(p => new Date(p.publishedAt)); for (let i = 1; i < d.length; i++) pm.expect(d[i-1] >= d[i]).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List posts by category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts?category=Wellness",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "Wellness"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Every post is in Wellness\", () => pm.response.json().data.forEach(p => pm.expect(p.category).to.eql(\"Wellness\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get post by slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/what-to-expect-first-visit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "what-to-expect-first-visit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json().data;",
+                  "pm.test(\"Full post returned\", () => { pm.expect(p.slug).to.eql(\"what-to-expect-first-visit\"); pm.expect(p).to.have.property(\"content\"); });",
+                  "pm.test(\"Author and internal flags hidden\", () => pm.expect(p).to.not.have.any.keys(\"author\",\"isPublished\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get post - not found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/does-not-exist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "does-not-exist"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get post - invalid slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/Bad_Slug!",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "Bad_Slug!"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Messages",
       "item": [
         {
