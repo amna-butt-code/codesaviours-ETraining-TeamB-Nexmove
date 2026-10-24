@@ -5,8 +5,9 @@
 - Public pages: About, Services, Team, Packages, Blog, Privacy, Terms
 - Home page connected to API (FAQs, conditions)
 - MongoDB Atlas and server/.env setup, docs/plan.md
-- Zohaib: models (Condition, Faq, Message, Review, Post, Exercise), public APIs (FAQs, conditions, messages, posts), seed script, Postman collection, logo, favicon, brand colors, docs/clinic-info.md
+- models (Condition, Faq, Message, Review, Post, Exercise), public APIs (FAQs, conditions, messages, posts), seed script, Postman collection, logo, favicon, brand colors, docs/clinic-info.md
 - Booking flow UI with sample data (/book)
+-booking confirmation emails (Nodemailer, Mailtrap), server/.env.example
 
 ## In progress
 - Hammad: update and delete for services and appointments (not merged yet, branch feature/backend-foundation)
@@ -21,6 +22,7 @@
 - Pages: /faq, /conditions, /contact, /login (if not done)
 - Fill placeholders from docs/clinic-info.md
 - Home page services section (dummy data until the Service API is merged)
+- Hook confirmation email into booking API once merged
 - README, demo video, team PPT, final submission (Day 11-12)
 
 ## Open issues
