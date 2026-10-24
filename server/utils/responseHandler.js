@@ -9,4 +9,4 @@ const responseHandler = (res, statusCode, message, data = null) => {
   return res.status(statusCode).json(response);
 };
 
-module.exports = {responseHandler};
+module.exports = responseHandler;

@@ -1,35 +1,75 @@
-const StatusCode = require('../consts/statusCode');
-const User = requiore('../models/User');
-const responseHandler = require('../utils/responseHandler');
+const {StatusCode} = require('../consts/statusCode');
+const User = require('../models/User');
+const responseHandler = require("../utils/responseHandler");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 
-const registerUser = async (req,res)=>{
-    const {name,email,password,role} = req.body;
 
-    try{
-        const existingUser = await User.findOne({email:email});
-        if(existingUser){
-            return responseHandler(res,StatusCode.ALREADY_EXIST,"User already exists");
+const registerUser = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
 
-        }
+    if (
+      typeof name !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !name.trim() ||
+      !email.trim() ||
+      !password
+    ) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Name, email and password are required"
+      );
+    }
 
-        const normalozedEmail = email.trim().toLowerCase();
-        const hashedPassword = await bcrypt.hash(password,10);
+    const normalizedEmail = email.trim().toLowerCase();
 
-        const newUser = await User.create({
-            name:name.trim(),
-            email:normalozedEmail,
-            password:hashedPassword,
-            role:role.trim()
-        })
-        responseHandler(res,StatusCode.CREATED,"User registered successfully",newUser);
-    }catch(error){
-        responseHandler(res,StatusCode.INTERNAL_SERVER_ERROR,"Error registering user",error);
-    };
+    const existingUser = await User.findOne({
+      email: normalizedEmail,
+    });
 
+    if (existingUser) {
+      return responseHandler(
+        res,
+        StatusCode.ALREADY_EXIST,
+        "User already exists"
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      password: hashedPassword,
+      role: "patient",
+    });
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "User registered successfully",
+      {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+      }
+    );
+  } catch (error) {
+    console.error("Registration error:", error.message);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Error registering user"
+    );
+  }
 };
+
 
   const userLogin = async (req, res) => {
   try {
@@ -53,7 +93,7 @@ const registerUser = async (req,res)=>{
 
     if (!process.env.JWT_SECRET) {
       console.error("JWT_SECRET is not configured");
-      return responseHandler(res,StatusCode.INTERNAL_SERVER_ERROR,"Authentication is not configured");
+      return responseHandler(res,StatusCode.SERVER_ERROR,"Authentication is not configured");
     }
 
     const token = jwt.sign(
@@ -65,7 +105,7 @@ const registerUser = async (req,res)=>{
       { expiresIn: "1d" }
     );
 
-    return responseHandler(res,StatusCode.OK,"Login successful",{
+    return responseHandler(res,StatusCode.SUCCESS,"Login successful",{
       token,
       user: {
         id: user._id,
@@ -76,8 +116,107 @@ const registerUser = async (req,res)=>{
     });
   } catch (error) {
     console.error("Login error:", error.message);
-    return responseHandler(res,StatusCode.INTERNAL_SERVER_ERROR,"Unable to log in",error);
+    return responseHandler(res,StatusCode.SERVER_ERROR,"Unable to log in",error);
   }
-}
+};
 
-  module.exports = {registerUser, userLogin};
+
+const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, role } = req.body;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "User not found"
+      );
+    }
+
+    if (name !== undefined) {
+      if (typeof name !== "string" || !name.trim()) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Name must not be empty"
+        );
+      }
+      user.name = name.trim();
+    }
+
+    if (email !== undefined) {
+      if (typeof email !== "string" || !email.trim()) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Email must not be empty"
+        );
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+      const existingUser = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: id },
+      });
+
+      if (existingUser) {
+        return responseHandler(
+          res,
+          StatusCode.ALREADY_EXIST,
+          "Email already exists"
+        );
+      }
+
+      user.email = normalizedEmail;
+    }
+
+    if (role !== undefined) {
+      if (!["patient", "therapist", "admin"].includes(role)) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Invalid role"
+        );
+      }
+      user.role = role;
+    }
+
+    await user.save();
+
+    return responseHandler(res,StatusCode.OK,"User updated successfully",
+      {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      }
+    );
+  } catch (error) {
+    console.error("Update user error:", error);
+    return responseHandler(res,StatusCode.SERVER_ERROR,"Error updating user");
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByIdAndDelete(id);
+
+    if (!user) {
+      return responseHandler(res,StatusCode.NOT_FOUND,"User not found");
+    }
+
+    return responseHandler(res,StatusCode.SUCCESS,"User deleted successfully");
+  } catch (error) {
+    console.error("Delete user error:", error);
+    return responseHandler(res,StatusCode.SERVER_ERROR,"Error deleting user"
+    );
+  }
+};
+
+
+  module.exports = {registerUser, userLogin, updateUser, deleteUser};
