@@ -14,7 +14,7 @@ Owner: Zohaib. Last updated: 23 Oct 2026.
 | Phone | 03266312211 (international format: +92 326 6312211) | Instagram bio and post |
 | Booking | Appointments via Instagram DM or the phone number above | Instagram bio |
 | Instagram | https://www.instagram.com/nexmove_/ | Shared by the coordinator |
-| Google Maps | https://share.google/i4m42aMPoyZVJKvn3 | Shared by Zohaib (page details not yet read) |
+| Google Maps | https://share.google/i4m42aMPoyZVJKvn3 | Shared by Zohaib |
 | Bio wording | "Rehabilitation \| Wellness", "Helping you move better" | Instagram bio |
 | Taglines | "Your Next Move Starts Here" (poster), "Your next move towards a better life!" (Instagram) | Poster, Instagram |
 | Facebook | None exists | Searched by Zohaib |
