@@ -20,3 +20,13 @@ exports.contactLimiter = rateLimit({
     message: "You've sent a few messages recently. Please try again later, or call us directly.",
   },
 });
+
+
+// Admin routes: max 100 requests per IP every 15 minutes
+exports.writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { success: false, message: "Too many requests. Please wait a moment and try again." },
+});
