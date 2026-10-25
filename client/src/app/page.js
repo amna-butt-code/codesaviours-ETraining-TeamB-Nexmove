@@ -90,8 +90,8 @@ export default async function Home() {
 
       <section className="max-w-6xl mx-auto px-4 py-12">
         <h2 className="text-3xl font-bold text-[var(--color-dark)] mb-4">Location and timings</h2>
-        <p>[Clinic address]</p>
-        <p>Timings: [Clinic timings]</p>
+        <p>Riyaz Ul Jannah Colony, Daewoo Road, Faisalabad</p>
+<p>Men: 9 AM to 1 PM. Women and children: 1 PM to 10 PM.</p>
       </section>
 
       <section className="bg-[var(--color-primary)] text-white px-4 py-14 text-center">

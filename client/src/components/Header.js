@@ -19,9 +19,9 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 bg-white shadow-sm">
       <div className="bg-[var(--color-dark)] text-white text-sm px-4 py-1 flex flex-wrap gap-x-6 justify-center md:justify-between">
-        <span>Phone: [Clinic phone]</span>
-        <span>WhatsApp: [Clinic WhatsApp]</span>
-        <span>Timings: [Clinic timings]</span>
+        <span>Phone: 0326 6312211</span>
+<span>Instagram DM: @nexmove_</span>
+<span>Men 9 AM-1 PM | Women and children 1 PM-10 PM</span>
       </div>
 
       <nav className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
