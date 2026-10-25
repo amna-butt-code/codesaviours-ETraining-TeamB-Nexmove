@@ -5,7 +5,7 @@ import PageHero from "../../components/PageHero";
 const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
 
 export default function Contact() {
-  const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", text: "" });
   const [status, setStatus] = useState("");
 
   const set = (k, v) => setForm({ ...form, [k]: v });
@@ -19,7 +19,14 @@ export default function Contact() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      setStatus(res.ok ? "Thank you. We will get back to you." : "Could not send. Please try again.");
+      if (res.ok) {
+        setStatus("Thank you. We will get back to you.");
+        setForm({ name: "", phone: "", email: "", text: "" });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        const first = data.errors ? Object.values(data.errors)[0] : null;
+        setStatus(first || "Could not send. Please try again.");
+      }
     } catch {
       setStatus("Could not send. Please try again.");
     }
@@ -42,10 +49,10 @@ export default function Contact() {
           </p>
         </div>
         <form onSubmit={submit} className="space-y-3">
-          <input className="border rounded-lg p-3 w-full" placeholder="Name" required value={form.name} onChange={(e) => set("name", e.target.value)} />
-          <input className="border rounded-lg p-3 w-full" placeholder="Phone" required value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-          <input className="border rounded-lg p-3 w-full" placeholder="Email (optional)" value={form.email} onChange={(e) => set("email", e.target.value)} />
-          <textarea className="border rounded-lg p-3 w-full" rows={4} placeholder="Message" required value={form.message} onChange={(e) => set("message", e.target.value)} />
+          <input className="border rounded-lg p-3 w-full" placeholder="Name" required minLength={2} value={form.name} onChange={(e) => set("name", e.target.value)} />
+          <input className="border rounded-lg p-3 w-full" placeholder="Phone (e.g. 03266312211)" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+          <input className="border rounded-lg p-3 w-full" type="email" placeholder="Email" required value={form.email} onChange={(e) => set("email", e.target.value)} />
+          <textarea className="border rounded-lg p-3 w-full" rows={4} minLength={10} placeholder="Message (at least 10 characters)" required value={form.text} onChange={(e) => set("text", e.target.value)} />
           <button className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-lg font-semibold">Send message</button>
           {status && <p>{status}</p>}
         </form>
