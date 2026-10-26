@@ -12,7 +12,7 @@ const holidaySchema = new mongoose.Schema(
       required: true,
       trim: true
     },
-    scope: {
+    scope: { 
       type: String,
       enum: ["clinic", "therapist"],
       default: "clinic"

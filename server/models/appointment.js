@@ -22,6 +22,16 @@ const appointmentSchema = new mongoose.Schema(
       type: Date,
       required: true
     },
+     appointmentEnd: {
+      type: Date,
+      required: true,
+      validate: {
+        validator: function (value) {
+          return value > this.appointmentDate;
+        },
+        message: "Appointment end time must be after start time."
+      }
+    },
     status: {
       type: String,
       enum: [

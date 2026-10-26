@@ -23,12 +23,37 @@ const therapistSchema = new mongoose.Schema(
             default: []
         },
         availability: {
-            type:[String],
-            default:[],
+            type: [
+        {
+            dayOfWeek: {
+                type: Number,
+                required: true,
+                min: 0,
+                max: 6,
+            },
+            startTime: {
+                type: String,
+                required: true,
+                match: /^([01]\d|2[0-3]):[0-5]\d$/,
+            },
+            endTime: {
+                type: String,
+                required: true,
+                match: /^([01]\d|2[0-3]):[0-5]\d$/,
+            },
         },
+    ],
+    default: [],
+},
+
         inactive:{
             type:Boolean,
-            default:true
+            default:false
+        },
+        profileImage:{
+            type:String,
+            default:"",
+            trim:true
         }
 
     },

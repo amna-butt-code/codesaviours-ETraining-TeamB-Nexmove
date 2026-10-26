@@ -1,5 +1,6 @@
 const {StatusCode} = require('../consts/statusCode');
 const User = require('../models/User');
+const paitent = require('../models/patient');
 const responseHandler = require("../utils/responseHandler");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -8,21 +9,19 @@ const jwt = require("jsonwebtoken");
 
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-
+const { name, email, password, phone, dateOfBirth, address } = req.body;
     if (
-      typeof name !== "string" ||
-      typeof email !== "string" ||
-      typeof password !== "string" ||
-      !name.trim() ||
-      !email.trim() ||
-      !password
-    ) {
-      return responseHandler(
-        res,
-        StatusCode.BAD_REQUEST,
-        "Name, email and password are required"
-      );
+          typeof name !== "string" ||
+          typeof email !== "string" ||
+          typeof password !== "string" ||
+          typeof phone !== "string" ||
+          !name.trim() ||
+          !email.trim() ||
+          !password ||
+          !phone.trim()
+         ) 
+         {
+      return responseHandler( res, StatusCode.BAD_REQUEST,"Name, email, password, and phone are required");
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -48,10 +47,14 @@ const registerUser = async (req, res) => {
       role: "patient",
     });
 
-    return responseHandler(
-      res,
-      StatusCode.SUCCESS,
-      "User registered successfully",
+    await Patient.create({
+  user: newUser._id,
+  phone: phone.trim(),
+  dateOfBirth: dateOfBirth || undefined,
+  address: address?.trim() || undefined,
+});
+
+    return responseHandler(res,StatusCode.SUCCESS,"User registered successfully",
       {
         id: newUser._id,
         name: newUser.name,
