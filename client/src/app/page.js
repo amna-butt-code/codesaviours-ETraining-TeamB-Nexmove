@@ -22,7 +22,7 @@ export default async function Home() {
     <div>
       <section className="bg-[var(--color-light)] px-4 py-16 text-center">
         <h1 className="text-4xl md:text-5xl font-bold text-[var(--color-dark)] max-w-3xl mx-auto">
-          Move better. Feel better. [Clinic headline]
+          Move better. Feel better. Your next move starts here.
         </h1>
         <p className="mt-4 text-lg max-w-2xl mx-auto">
           Professional physiotherapy care for pain relief and recovery.
