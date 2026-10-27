@@ -12,7 +12,7 @@ export default function About() {
       <section className="max-w-4xl mx-auto px-4 py-10 space-y-8">
         <div>
           <h2 className="text-2xl font-bold text-[var(--color-dark)] mb-2">Our story</h2>
-          <p>[Clinic story from client]</p>
+          <p>Nexmove is a rehabilitation and wellness clinic in Faisalabad, helping you move better.</p>
         </div>
         <div>
           <h2 className="text-2xl font-bold text-[var(--color-dark)] mb-2">Our mission</h2>
