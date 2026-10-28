@@ -1,12 +1,13 @@
 const mongoose = require("mongoose");
 const responseHandler = require("../utils/responseHandler");
 const {StatusCode} = require("../consts/statusCode");
+const { generateSlots } = require("../utils/slots");
 
-const patient = require("../models/patient");
-const therapist = require("../models/therapist");
-const service = require("../models/service");
-const appointment = require("../models/appointment");
-const holidays = require("../models/holiday");
+const Patient = require("../models/patient");
+const Therapist = require("../models/therapist");
+const Service = require("../models/service");
+const Appointment = require("../models/appointment");
+const Holidays = require("../models/holiday");
 
 
 
@@ -28,7 +29,7 @@ const findOverlappingAppointments = async (
   end,
   session = null
 ) => {
-  const query = appointment.find({
+  const query = Appointment.find({
     therapist: therapistId,
     status: { $nin: ["cancelled"] },
     appointmentDate: { $lt: end },
@@ -62,8 +63,8 @@ const getAvailableSlots = async (req, res) => {
     const requestedDay = new Date(`${date}T12:00:00`).getDay();
 
     const [therapistRecord, serviceRecord] = await Promise.all([
-  therapist.findById(therapistId),
-  service.findOne({ _id: serviceId, isActive: true })
+  Therapist.findById(therapistId),
+  Service.findOne({ _id: serviceId, isActive: true })
 ]);
 
     if (!therapistRecord  || therapistRecord.inactive) {
@@ -79,18 +80,23 @@ const getAvailableSlots = async (req, res) => {
     );
 
     if (!schedule.length) {
-      return responseHandler(res, StatusCode.SUCCESS, {
-        date,
-        serviceDuration: serviceRecord.duration,
-        availableSlots: []
-      });
+  return responseHandler(
+    res,
+    StatusCode.SUCCESS,
+    "Available slots retrieved successfully.",
+    {
+      date,
+      serviceDuration: serviceRecord.duration,
+      availableSlots: []
     }
+  );
+}
 
     const dayStart = buildDateTime(date, "00:00");
     const nextDay = new Date(dayStart);
     nextDay.setDate(nextDay.getDate() + 1);
 
-    const holidays = await holidays.find({
+    const holidays = await Holidays.find({
       date: { $gte: dayStart, $lt: nextDay },
       $or: [
         { scope: "clinic" },
@@ -101,7 +107,7 @@ const getAvailableSlots = async (req, res) => {
     if (holidays.length) {
       return responseHandler(res, StatusCode.SUCCESS, "Appointments are unavailable on this holiday.", {
         date,
-        serviceDuration: service.duration,
+        serviceDuration: serviceRecord.duration,
         availableSlots: []
       });
     }
@@ -119,53 +125,68 @@ const getAvailableSlots = async (req, res) => {
       ]
     });
 
-    const now = new Date();
-    const availableSlots = [];
-    const duration = service.duration;
+   const availableSlots = [];
+   const duration = serviceRecord.duration;
 
-    for (const shift of schedule) {
-      const shiftStart = timeToMinutes(shift.startTime);
-      const shiftEnd = timeToMinutes(shift.endTime);
+       for (const shift of schedule) {
+    const bookedSlots = appointments.map((appointment) => {
+  const start = appointment.appointmentDate;
 
-      if (shiftEnd <= shiftStart) continue;
+  return `${String(start.getHours()).padStart(2, "0")}:${String(
+    start.getMinutes()
+  ).padStart(2, "0")}`;
+});
 
-      for (
-        let startMinutes = shiftStart;
-        startMinutes + duration <= shiftEnd;
-        startMinutes += duration
-      ) {
-        const endMinutes = startMinutes + duration;
+  const generatedTimes = generateSlots({
+    date,
+    workStart: shift.startTime,
+    workEnd: shift.endTime,
+    sessionMinutes: duration,
+    bookedSlots,
+    now: new Date()
+  });
 
-        const startTime = `${String(Math.floor(startMinutes / 60)).padStart(2, "0")}:${String(startMinutes % 60).padStart(2, "0")}`;
-        const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+  for (const startTime of generatedTimes) {
+    const start = buildDateTime(date, startTime);
+    const end = new Date(start.getTime() + duration * 60 * 1000);
 
-        const start = buildDateTime(date, startTime);
-        const end = buildDateTime(date, endTime);
+    const isBooked = appointments.some((appointment) => {
+      const existingEnd = appointment.appointmentEnd;
 
-        if (start <= now) continue;
-
-        const isBooked = appointments.some((appointment) => {
-          const existingStart = appointment.appointmentDate;
-          const existingEnd = appointment.appointmentEnd;
-
-          if (!existingEnd) {
-            return existingStart >= start && existingStart < end;
-          }
-
-          return existingStart < end && existingEnd > start;
-        });
-
-        if (!isBooked) {
-          availableSlots.push({ startTime, endTime });
-        }
+      if (!existingEnd) {
+        return (
+          appointment.appointmentDate >= start &&
+          appointment.appointmentDate < end
+        );
       }
-    }
 
-    return responseHandler(res, 200, {
-      date,
-      serviceDuration: duration,
-      availableSlots
+      return (
+        appointment.appointmentDate < end &&
+        existingEnd > start
+      );
     });
+
+    if (!isBooked) {
+      const endMinutes = timeToMinutes(startTime) + duration;
+      const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(
+        endMinutes % 60
+      ).padStart(2, "0")}`;
+
+      availableSlots.push({ startTime, endTime });
+    }
+  }
+}
+
+   return responseHandler(
+  res,
+  StatusCode.SUCCESS,
+  "Available slots retrieved successfully.",
+  {
+    date,
+    serviceDuration: duration,
+    availableSlots
+  }
+);
   } catch (error) {
     console.error("Get available slots error:", error);
     return responseHandler(res, StatusCode.SERVER_ERROR,"Failed to retrieve available slots.");
@@ -174,7 +195,7 @@ const getAvailableSlots = async (req, res) => {
 
 const bookAppointment = async (req, res) => {
   try {
-    const { therapistId, serviceId, appointmentDate, notes = "" } = req.body;
+    const { therapistId, serviceId, appointmentDate, notes = "", consentGiven } = req.body;
 
     if (
       !mongoose.isValidObjectId(therapistId) ||
@@ -203,7 +224,7 @@ const bookAppointment = async (req, res) => {
     ]);
 
     if (!patient) {
-      return responseHandler(res, StatusCode.NOT_FOUND, "Patient profile not found.");;
+      return responseHandler(res, StatusCode.NOT_FOUND, "Patient profile not found.");
     }
 
     if (!therapist || therapist.inactive) {
@@ -239,7 +260,7 @@ const bookAppointment = async (req, res) => {
     const nextDay = new Date(dayStart);
     nextDay.setDate(nextDay.getDate() + 1);
 
-    const holiday = await Holiday.findOne({
+    const holiday = await Holidays.findOne({
       date: { $gte: dayStart, $lt: nextDay },
       $or: [
         { scope: "clinic" },
@@ -258,7 +279,7 @@ const bookAppointment = async (req, res) => {
     );
 
     if (overlap.length > 0) {
-      return responseHandler(res, StatusCode.ALREADY_EXIST, "This time slot is already booked.");
+      return responseHandler(res, StatusCode.CONFLICT, "This time slot is already booked.");
     }
 
     const appointment = await Appointment.create({
@@ -268,14 +289,27 @@ const bookAppointment = async (req, res) => {
       appointmentDate: start,
       appointmentEnd: end,
       notes,
+      consentGiven,
       status: "pending"
     });
 
     return responseHandler(res, StatusCode.SUCCESS, "Appointment booked successfully.", appointment);
   } catch (error) {
-    console.error("Book appointment error:", error);
-    return responseHandler(res, StatusCode.SERVER_ERROR, "Failed to book appointment.");
+  if (error.code === 11000) {
+    return responseHandler(
+      res,
+      StatusCode.CONFLICT,
+      "This time slot is already booked."
+    );
   }
+
+  console.error("Book appointment error:", error);
+  return responseHandler(
+    res,
+    StatusCode.SERVER_ERROR,
+    "Failed to book appointment."
+  );
+}
 };
 
 module.exports = {getAvailableSlots,bookAppointment};
