@@ -1,3 +1,4 @@
+
 require("dotenv").config({
   path: require("path").join(__dirname, ".env"),
 });
@@ -11,8 +12,14 @@ const authRoutes = require("./routes/auth");
 const holidayRoutes = require("./routes/holiday");
 const therapistRoutes = require("./routes/therapist");
 const appointmentRoutes = require("./routes/appointments");
+const faqRoutes = require("./routes/faqRoutes");
+const conditionRoutes = require("./routes/conditionRoutes");
+const messageRoutes = require("./routes/messageRoutes");
+const postRoutes = require("./routes/postRoutes");
+const packageRoutes = require("./routes/packageRoutes");
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
@@ -29,16 +36,23 @@ app.use("/api/therapists", therapistRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
 // Existing main-branch routes
-app.use("/api/faqs", require("./routes/faqRoutes"));
-app.use("/api/conditions", require("./routes/conditionRoutes"));
-app.use("/api/messages", require("./routes/messageRoutes"));
-app.use("/api/posts", require("./routes/postRoutes"));
-app.use("/api/packages", require("./routes/packageRoutes"));
+app.use("/api/faqs", faqRoutes);
+app.use("/api/conditions", conditionRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/posts", postRoutes);
+app.use("/api/packages", packageRoutes);
 
-const PORT = process.env.PORT || 5000;
+async function startServer() {
+  try {
+    await connectDB();
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to connect to the database:", error.message);
+    process.exit(1);
+  }
+}
 
-connectDB();
+startServer();
