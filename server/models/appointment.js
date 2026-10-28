@@ -16,6 +16,11 @@ const appointmentSchema = new mongoose.Schema(
        type: String,
        trim: true
       },
+      guestEmail: {
+        type: String,
+        trim: true,
+        lowercase: true
+      },
     consentGiven: {
        type: Boolean,
        required: true,

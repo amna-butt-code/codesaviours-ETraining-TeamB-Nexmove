@@ -3,6 +3,7 @@ const responseHandler = require("../utils/responseHandler");
 const {StatusCode} = require("../consts/statusCode");
 const { generateSlots } = require("../utils/slots");
 
+const {sendGuestBookingConfirmation} = require("../utils/emailService");
 const Patient = require("../models/patient");
 const Therapist = require("../models/therapist");
 const Service = require("../models/service");
@@ -312,4 +313,163 @@ const bookAppointment = async (req, res) => {
 }
 };
 
-module.exports = {getAvailableSlots,bookAppointment};
+
+
+const bookGuestAppointment = async (req, res) => {
+  try {
+    const {therapistId,serviceId,appointmentDate,guestName,guestEmail,guestPhone,consentGiven,notes = ""} = req.body;
+
+    if (consentGiven !== true) {
+        return responseHandler(res,StatusCode.BAD_REQUEST,"Consent is required to book an appointment.");
+    }
+
+    const start = new Date(appointmentDate);
+
+    if (Number.isNaN(start.getTime()) ||start <= new Date() ||start.getSeconds() !== 0 ||start.getMilliseconds() !== 0) {
+      return responseHandler(res,StatusCode.BAD_REQUEST,"Please provide a valid future appointment time.");
+    }
+
+    const [therapist, service] = await Promise.all([
+      Therapist.findById(therapistId),
+      Service.findOne({ _id: serviceId, isActive: true })
+    ]);
+
+    if (!therapist || therapist.inactive) {
+      return responseHandler(res,StatusCode.NOT_FOUND,"Therapist not found or inactive.");
+    }
+
+    if (!service) {
+      return responseHandler(res,StatusCode.NOT_FOUND,"Active service not found." );
+    }
+
+    const date = [
+      start.getFullYear(),
+      String(start.getMonth() + 1).padStart(2, "0"),
+      String(start.getDate()).padStart(2, "0")
+    ].join("-");
+
+    const startTime =
+      `${String(start.getHours()).padStart(2, "0")}:` +
+      `${String(start.getMinutes()).padStart(2, "0")}`;
+
+    const end = new Date(
+      start.getTime() + service.duration * 60 * 1000
+    );
+
+    const dayOfWeek = start.getDay();
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = startMinutes + service.duration;
+
+    const matchingShifts = (therapist.availability || []).filter(
+      (shift) =>
+        shift.dayOfWeek === dayOfWeek &&
+        timeToMinutes(shift.startTime) <= startMinutes &&
+        timeToMinutes(shift.endTime) >= endMinutes &&
+        start.toDateString() === end.toDateString()
+    );
+
+    if (!matchingShifts.length) {
+      return responseHandler(res,StatusCode.BAD_REQUEST,"The selected time is outside the therapist's working hours.");
+    }
+
+    const dayStart = new Date(start);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const nextDay = new Date(dayStart);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const holiday = await Holidays.findOne({
+      date: { $gte: dayStart, $lt: nextDay },
+      $or: [
+        { scope: "clinic" },
+        { scope: "therapist", therapist: therapistId }
+      ]
+    });
+
+    if (holiday) {
+      return responseHandler(res,StatusCode.CONFLICT,"Appointments are unavailable on this holiday.");
+    }
+
+    const existingAppointments = await Appointment.find({
+      therapist: therapistId,
+      status: { $nin: ["cancelled"] },
+      appointmentDate: { $lt: nextDay },
+      $or: [
+        { appointmentEnd: { $gt: dayStart } },
+        {
+          appointmentEnd: { $exists: false },
+          appointmentDate: { $gte: dayStart }
+        }
+      ]
+    });
+
+    const bookedSlots = existingAppointments.map((appointment) => {
+      const bookedStart = appointment.appointmentDate;
+
+      return (
+        `${String(bookedStart.getHours()).padStart(2, "0")}:` +
+        `${String(bookedStart.getMinutes()).padStart(2, "0")}`
+      );
+    });
+
+    const availableTimes = matchingShifts.flatMap((shift) =>
+      generateSlots({
+        date,
+        workStart: shift.startTime,
+        workEnd: shift.endTime,
+        sessionMinutes: service.duration,
+        bookedSlots,
+        now: new Date()
+      })
+    );
+
+    if (!availableTimes.includes(startTime)) {
+      return responseHandler(res,StatusCode.CONFLICT,"This time slot is no longer available.");
+    }
+
+    const overlap = await findOverlappingAppointments(
+      therapistId,
+      start,
+      end
+    );
+
+    if (overlap.length > 0) {
+      return responseHandler(res,StatusCode.CONFLICT,"This time slot is already booked.");
+    }
+
+    const appointment = await Appointment.create({
+      guestName,
+      guestEmail,
+      guestPhone,
+      therapist: therapist._id,
+      service: service._id,
+      appointmentDate: start,
+      appointmentEnd: end,
+      notes,
+      consentGiven: true,
+      status: "pending"
+    });
+
+     try {
+  await sendGuestBookingConfirmation(appointment);
+        } catch (emailError) {
+  console.error(
+    "Appointment saved, but confirmation email failed:",
+    emailError.message
+  );
+}
+    return responseHandler(res,StatusCode.SUCCESS,"Guest appointment booked successfully.",appointment);
+  } catch (error) {
+    if (error.code === 11000) {
+      return responseHandler(res,StatusCode.CONFLICT,"This time slot is already booked.");
+    }
+
+    console.error("Guest booking error:", error);
+
+    return responseHandler(res,StatusCode.SERVER_ERROR,"Failed to book guest appointment.");
+  }
+};
+
+
+
+module.exports = {getAvailableSlots,bookAppointment,bookGuestAppointment};
