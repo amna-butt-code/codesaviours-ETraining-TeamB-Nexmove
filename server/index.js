@@ -12,6 +12,7 @@ const authRoutes = require("./routes/auth");
 const holidayRoutes = require("./routes/holiday");
 const therapistRoutes = require("./routes/therapist");
 const appointmentRoutes = require("./routes/appointments");
+const chatRoutes = require("./routes/chat");
 const faqRoutes = require("./routes/faqRoutes");
 const conditionRoutes = require("./routes/conditionRoutes");
 const messageRoutes = require("./routes/messageRoutes");
@@ -31,6 +32,7 @@ app.get("/api/health", (req, res) => {
 // Backend foundation routes
 app.use("/api/services", serviceRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/chat", chatRoutes);
 app.use("/api/holidays", holidayRoutes);
 app.use("/api/therapists", therapistRoutes);
 app.use("/api/appointments", appointmentRoutes);
