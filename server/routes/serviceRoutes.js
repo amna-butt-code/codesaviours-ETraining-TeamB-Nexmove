@@ -7,8 +7,8 @@ const {
   getServiceById,
 } = require("../controllers/serviceRoutes");
 
-const authMiddleware = require("../middleware/authMiddleware");
-const roleMiddleware = require("../middleware/roleMiddleware");
+const authMiddleware = require("../middleware/authMiddleware")
+const roleMiddleware = require("../middleware/roleMiddleware")
 
 // Public read endpoints
 router.get("/getServices", getServices);
