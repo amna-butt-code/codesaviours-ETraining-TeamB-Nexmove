@@ -3,12 +3,18 @@ const responseHandler = require("../utils/responseHandler");
 const {StatusCode} = require("../consts/statusCode");
 const { generateSlots } = require("../utils/slots");
 
-const {sendGuestBookingConfirmation} = require("../utils/emailService");
+const {
+  sendGuestBookingConfirmation,
+  sendPatientBookingConfirmation,
+} = require("../utils/emailService");
+
+const User = require("../models/user");
 const Patient = require("../models/patient");
 const Therapist = require("../models/therapist");
 const Service = require("../models/service");
 const Appointment = require("../models/appointment");
 const Holidays = require("../models/holiday");
+
 
 
 
@@ -283,18 +289,45 @@ const bookAppointment = async (req, res) => {
       return responseHandler(res, StatusCode.CONFLICT, "This time slot is already booked.");
     }
 
-    const appointment = await Appointment.create({
-      patient: patient._id,
-      therapist: therapist._id,
-      service: service._id,
-      appointmentDate: start,
-      appointmentEnd: end,
-      notes,
-      consentGiven,
-      status: "pending"
-    });
 
-    return responseHandler(res, StatusCode.SUCCESS, "Appointment booked successfully.", appointment);
+const appointment = await Appointment.create({
+  patient: patient._id,
+  therapist: therapist._id,
+  service: service._id,
+  appointmentDate: start,
+  appointmentEnd: end,
+  notes,
+  consentGiven,
+  status: "pending",
+});
+
+// Send confirmation only after the appointment has been saved.
+try {
+  const bookingUser = await User.findById(userId).select("name email");
+
+  if (!bookingUser?.email) {
+    throw new Error("Registered patient's email address was not found.");
+  }
+
+  await sendPatientBookingConfirmation({
+    email: bookingUser.email,
+    name: bookingUser.name,
+    appointment,
+  });
+} catch (emailError) {
+  console.error(
+    "Appointment saved, but confirmation email failed:",
+    emailError.message
+  );
+}
+
+return responseHandler(
+  res,
+  StatusCode.SUCCESS,
+  "Appointment booked successfully.",
+  appointment
+);
+
   } catch (error) {
   if (error.code === 11000) {
     return responseHandler(
