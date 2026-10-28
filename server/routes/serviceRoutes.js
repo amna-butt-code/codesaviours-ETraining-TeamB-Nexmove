@@ -1,15 +1,25 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
-const authMiddleware = require("../middlewares/authMiddleware");
-const roleMiddleware = require("../middlewares/roleMiddleware");
-const {createService,getServices,getServiceById}= require('../controllers/serviceRoutes');
+const {
+  createService,
+  getServices,
+  getServiceById,
+} = require("../controllers/serviceRoutes");
 
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 
-router.route('/newService').post(authMiddleware, roleMiddleware(["admin"]), createService);
-router.route('/getServices').get(authMiddleware, getServices);
-router.route('/getService/:id').get(authMiddleware, roleMiddleware(["admin"]), getServiceById);
+// Public read endpoints
+router.get("/getServices", getServices);
+router.get("/getService/:id", getServiceById);
 
-
+// Admin-only write endpoint
+router.post(
+  "/newService",
+  authMiddleware,
+  roleMiddleware("admin"),
+  createService
+);
 
 module.exports = router;
