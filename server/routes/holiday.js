@@ -6,8 +6,8 @@ const {
   getHolidays,
 } = require("../controllers/holiday");
 
-const authMiddleware = require("../middleware/authMiddleware");
-const roleMiddleware = require("../middleware/roleMiddleware");
+const authMiddleware = require("../middleware/authMiddleware")
+const roleMiddleware = require("../middleware/roleMiddleware")
 
 // Admin-only writes
 router.post(
