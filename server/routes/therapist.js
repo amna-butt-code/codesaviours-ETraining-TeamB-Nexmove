@@ -1,14 +1,23 @@
-
 const express = require("express");
 const router = express.Router();
 
+const {
+  createTherapist,
+  getTherapists,
+} = require("../controllers/therapist");
 
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 
-const authMiddleware  = require("../middlewares/authMiddleware");
-const roleMiddleware = require("../middlewares/roleMiddleware");
-const { createTherapist, getTherapists} = require("../controllers/therapist");
+// Public read endpoint
+router.get("/allTherapists", getTherapists);
 
-router.post("/newTherapist", authMiddleware, roleMiddleware(["admin"]), createTherapist);
-router.get("/allTherapists", authMiddleware, roleMiddleware(["admin"]), getTherapists);
+// Admin-only write endpoint
+router.post(
+  "/newTherapist",
+  authMiddleware,
+  roleMiddleware("admin"),
+  createTherapist
+);
 
 module.exports = router;
