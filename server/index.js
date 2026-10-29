@@ -1,3 +1,4 @@
+﻿const reviewRoutes = require("./routes/reviewRoutes");
 
 require("dotenv").config({
   path: require("path").join(__dirname, ".env"),
@@ -50,7 +51,8 @@ async function startServer() {
   try {
     await connectDB();
 
-    app.listen(PORT, () => {
+    app.use("/api/reviews", reviewRoutes);
+app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
@@ -60,3 +62,4 @@ async function startServer() {
 }
 
 startServer();
+
