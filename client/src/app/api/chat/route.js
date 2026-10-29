@@ -8,7 +8,7 @@ export async function POST(req) {
     return NextResponse.json({ message: "Please type a message." }, { status: 400 });
   }
   try {
-    const res = await fetch(`${API}/api/chat`, {
+    const res = await fetch(`${API}/api/assistant/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }),

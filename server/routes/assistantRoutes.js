@@ -1,21 +1,34 @@
-
 const express = require("express");
 const rateLimit = require("express-rate-limit");
-const { chat } = require("../controllers/assistantController");
+
+const {
+  chat,
+  isUrgentMessage,
+} = require("../controllers/assistantController");
 
 const router = express.Router();
 
 const assistantLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
-  standardHeaders: "draft-7",
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
   legacyHeaders: false,
   message: {
     success: false,
-    message: "Too many assistant requests. Please try again later.",
+    message: "You've reached the assistant's message limit. Please try again later.",
   },
 });
 
-router.post("/chat", assistantLimiter, chat);
+// Emergency messages must reach the controller's urgent-response handler.
+// Normal requests still go through the rate limiter.
+function limitNonUrgentRequests(req, res, next) {
+  if (isUrgentMessage(req.body?.message)) {
+    return next();
+  }
+
+  return assistantLimiter(req, res, next);
+}
+
+router.post("/chat", limitNonUrgentRequests, chat);
 
 module.exports = router;
