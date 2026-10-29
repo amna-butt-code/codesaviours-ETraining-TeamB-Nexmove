@@ -32,7 +32,7 @@ const findOverlappingAppointments = async (
 ) => {
   const query = Appointment.find({
     therapist: therapistId,
-    status: { $nin: ["cancelled"] },
+    status: { $in: ["pending", "confirmed"] },
     appointmentDate: { $lt: end },
     $or: [
       { appointmentEnd: { $gt: start } },
@@ -115,7 +115,7 @@ const getAvailableSlots = async (req, res) => {
 
     const appointments = await Appointment.find({
       therapist: therapistId,
-      status: { $nin: ["cancelled"] },
+      status: { $in: ["pending", "confirmed"] },
       appointmentDate: { $lt: nextDay },
       $or: [
         { appointmentEnd: { $gt: dayStart } },
@@ -270,7 +270,7 @@ const bookAppointment = async (req, res) => {
     });
 
     if (holiday) {
-      return responseHandler(res, StatusCode.NOT_FOUND, "Appointments are unavailable on this holiday.");
+      return responseHandler(res, StatusCode.CONFLICT, "Appointments are unavailable on this holiday.");
     }
 
     const overlap = await findOverlappingAppointments(
@@ -392,7 +392,7 @@ const bookGuestAppointment = async (req, res) => {
 
     const existingAppointments = await Appointment.find({
       therapist: therapistId,
-      status: { $nin: ["cancelled"] },
+      status: { $in: ["pending", "confirmed"] },
       appointmentDate: { $lt: nextDay },
       $or: [
         { appointmentEnd: { $gt: dayStart } },

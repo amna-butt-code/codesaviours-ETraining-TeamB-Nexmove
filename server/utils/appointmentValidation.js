@@ -25,7 +25,9 @@ const guestAppointmentBookingSchema = z.object({
   }),
 
   guestName: z.string().trim().min(1).max(100, "Guest name must be 100 characters or fewer"),
-  guestPhone: z.string().trim().min(11).max(11, "Guest phone must be 11 characters or fewer"),
+  guestPhone: z.string()
+    .trim()
+    .regex(/^03\d{9}$/, "Enter a valid 11-digit Pakistani mobile number"),
   guestEmail: z.string().trim().email("Please provide a valid email address").max(254),
 
   consentGiven: z.boolean().refine((value) => value === true, {
