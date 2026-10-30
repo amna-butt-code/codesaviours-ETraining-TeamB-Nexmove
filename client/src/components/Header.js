@@ -12,6 +12,7 @@ const links = [
   { name: "Blog", href: "/blog" },
   { name: "Contact", href: "/contact" },
     { name: "Ask Nexmove", href: "/chat" },
+    { name: "Pain Assessment", href: "/pain-assessment" },
 ];
 
 export default function Header() {
