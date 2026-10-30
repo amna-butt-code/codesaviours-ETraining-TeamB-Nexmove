@@ -1,3 +1,4 @@
+﻿const reviewRoutes = require("./routes/reviewRoutes");
 
 require("dotenv").config({
   path: require("path").join(__dirname, ".env.example"),
@@ -12,11 +13,13 @@ const authRoutes = require("./routes/auth");
 const holidayRoutes = require("./routes/holiday");
 const therapistRoutes = require("./routes/therapist");
 const appointmentRoutes = require("./routes/appointments");
+const chatRoutes = require("./routes/chat");
 const faqRoutes = require("./routes/faqRoutes");
 const conditionRoutes = require("./routes/conditionRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const postRoutes = require("./routes/postRoutes");
 const packageRoutes = require("./routes/packageRoutes");
+const assistantRoutes = require("./routes/assistantRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,9 +34,11 @@ app.get("/api/health", (req, res) => {
 // Backend foundation routes
 app.use("/api/services", serviceRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/chat", chatRoutes);
 app.use("/api/holidays", holidayRoutes);
 app.use("/api/therapists", therapistRoutes);
 app.use("/api/appointments", appointmentRoutes);
+app.use("/api/assistant", assistantRoutes);
 
 // Existing main-branch routes
 app.use("/api/faqs", faqRoutes);
@@ -46,7 +51,8 @@ async function startServer() {
   try {
     await connectDB();
 
-    app.listen(PORT, () => {
+    app.use("/api/reviews", reviewRoutes);
+app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
@@ -56,3 +62,4 @@ async function startServer() {
 }
 
 startServer();
+

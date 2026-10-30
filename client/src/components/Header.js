@@ -11,6 +11,7 @@ const links = [
   { name: "Packages & Fees", href: "/packages" },
   { name: "Blog", href: "/blog" },
   { name: "Contact", href: "/contact" },
+    { name: "Ask Nexmove", href: "/chat" },
 ];
 
 export default function Header() {

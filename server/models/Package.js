@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 
 const packageSchema = new mongoose.Schema(
@@ -49,7 +48,7 @@ const packageSchema = new mongoose.Schema(
     },
     isActive: {
       type: Boolean,
-      default: false,
+      default: true,
     },
   },
   { timestamps: true }
