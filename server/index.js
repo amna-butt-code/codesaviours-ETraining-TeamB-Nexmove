@@ -1,13 +1,20 @@
-﻿const reviewRoutes = require("./routes/reviewRoutes");
+﻿const path = require("path");
 
-require("dotenv").config({
-  path: require("path").join(__dirname, ".env.example"),
+// Load server/.env before importing modules that may use environment variables.
+const envResult = require("dotenv").config({
+  path: path.join(__dirname, ".env"),
 });
+
+if (envResult.error) {
+  console.error("Could not load server/.env:", envResult.error.message);
+  process.exit(1);
+}
 
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./db");
 
+const reviewRoutes = require("./routes/reviewRoutes");
 const serviceRoutes = require("./routes/serviceRoutes");
 const authRoutes = require("./routes/auth");
 const holidayRoutes = require("./routes/holiday");
@@ -28,7 +35,10 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", project: "Nexmove" });
+  res.json({
+    status: "ok",
+    project: "Nexmove",
+  });
 });
 
 // Backend foundation routes
@@ -40,26 +50,29 @@ app.use("/api/therapists", therapistRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/assistant", assistantRoutes);
 
-// Existing main-branch routes
+// Public content routes
 app.use("/api/faqs", faqRoutes);
 app.use("/api/conditions", conditionRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/packages", packageRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 async function startServer() {
   try {
     await connectDB();
 
-    app.use("/api/reviews", reviewRoutes);
-app.listen(PORT, () => {
+    app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error("Failed to connect to the database:", error.message);
+    console.error(
+      "Server startup aborted because the database connection failed:",
+      error.message
+    );
+
     process.exit(1);
   }
 }
 
 startServer();
-
