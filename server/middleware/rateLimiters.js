@@ -30,3 +30,16 @@ exports.writeLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: "Too many requests. Please wait a moment and try again." },
 });
+
+
+// Password reset: max 5 requests per IP every 15 minutes
+exports.passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many password reset attempts. Please try again later."
+  }
+});
