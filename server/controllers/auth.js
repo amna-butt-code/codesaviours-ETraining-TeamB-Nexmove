@@ -46,8 +46,8 @@ const { name, email, password, phone, dateOfBirth, address } = req.body;
       password: hashedPassword,
       role: "patient",
     });
-    console.log("User created:", newUser._id);
-console.log("Patient collection:", Patient.collection.name);
+
+
 
   await Patient.create({
   user: newUser._id,
@@ -55,7 +55,7 @@ console.log("Patient collection:", Patient.collection.name);
   dateOfBirth: dateOfBirth || undefined,
   address: address?.trim() || undefined,
 });
-console.log("Patient profile created successfully");
+
 
 
     return responseHandler(res,StatusCode.SUCCESS,"User registered successfully",
