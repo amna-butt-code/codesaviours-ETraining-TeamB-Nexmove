@@ -107,7 +107,7 @@ const getTherapists = async (req, res) => {
 
         return responseHandler(
             res,
-            StatusCode.OK,
+            StatusCode.SUCCESS,
             "Therapists retrieved successfully.",
             {
                 count: therapists.length,

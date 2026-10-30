@@ -1,7 +1,7 @@
 ﻿const reviewRoutes = require("./routes/reviewRoutes");
 
 require("dotenv").config({
-  path: require("path").join(__dirname, ".env"),
+  path: require("path").join(__dirname, ".env.example"),
 });
 
 const express = require("express");

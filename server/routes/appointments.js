@@ -2,24 +2,16 @@ const express = require("express");
 const router = express.Router();
 
 const validateAppointmentBooking = require("../middleware/validateAppointmentBooking");
+const validateGuestAppointmentBooking = require("../middleware/validateGuestAppointmentBooking");
 const bookingRateLimiter = require("../middleware/bookingRateLimiter");
 const authMiddleware = require("../middleware/authMiddleware");
 
-const {
-  bookAppointment,
-  getAvailableSlots,
-} = require("../controllers/appointments");
 
-// Logged-in patient booking
-router.post(
-  "/book",
-  authMiddleware,
-  bookingRateLimiter,
-  validateAppointmentBooking,
-  bookAppointment
-);
+const {bookAppointment,getAvailableSlots,bookGuestAppointment} = require("../controllers/appointments");
 
-// Public endpoint required by the booking UI
-router.get("/getAvailableSlots", getAvailableSlots);
+
+router.post("/book",authMiddleware,validateAppointmentBooking,bookingRateLimiter,bookAppointment);
+router.post("/bookGuest",validateGuestAppointmentBooking,bookingRateLimiter,bookGuestAppointment);
+router.get("/getAvailableSlots",bookingRateLimiter,getAvailableSlots);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 const {StatusCode} = require('../consts/statusCode');
 const User = require('../models/User');
-const paitent = require('../models/patient');
+const Patient = require('../models/patient');
 const responseHandler = require("../utils/responseHandler");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -46,13 +46,17 @@ const { name, email, password, phone, dateOfBirth, address } = req.body;
       password: hashedPassword,
       role: "patient",
     });
+    console.log("User created:", newUser._id);
+console.log("Patient collection:", Patient.collection.name);
 
-    await Patient.create({
+  await Patient.create({
   user: newUser._id,
   phone: phone.trim(),
   dateOfBirth: dateOfBirth || undefined,
   address: address?.trim() || undefined,
 });
+console.log("Patient profile created successfully");
+
 
     return responseHandler(res,StatusCode.SUCCESS,"User registered successfully",
       {

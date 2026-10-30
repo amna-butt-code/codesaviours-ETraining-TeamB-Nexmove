@@ -1,5 +1,6 @@
-﻿
 const mongoose = require("mongoose");
+const crypto = require("crypto");
+
 const responseHandler = require("../utils/responseHandler");
 const { StatusCode } = require("../consts/statusCode");
 const { generateSlots } = require("../utils/slots");
@@ -9,14 +10,18 @@ const Therapist = require("../models/therapist");
 const Service = require("../models/service");
 const Appointment = require("../models/appointment");
 const Holidays = require("../models/holiday");
+const AppointmentLock = require("../models/appointmentLock");
 const User = require("../models/User");
 
-const {
-  sendBookingConfirmation,
-} = require("../emails/bookingConfirmation");
+const { sendBookingConfirmation } = require("../emails/bookingConfirmation");
 
 const ACTIVE_APPOINTMENT_STATUSES = ["pending", "confirmed"];
 const CLINIC_TIME_ZONE = "Asia/Karachi";
+const LOCK_DURATION_MS = 5 * 60 * 1000;
+
+/* -------------------------------------------------------------------------- */
+/*                                  Helpers                                   */
+/* -------------------------------------------------------------------------- */
 
 function timeToMinutes(time) {
   const [hours, minutes] = String(time).split(":").map(Number);
@@ -36,6 +41,10 @@ function getLocalDateString(date) {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function getDateKey(date) {
+  return getLocalDateString(date);
 }
 
 function isValidDateString(date) {
@@ -77,6 +86,10 @@ function formatEmailTime(date) {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/*                              Email Confirmation                            */
+/* -------------------------------------------------------------------------- */
+
 // A booking should remain saved even if sending the email fails.
 async function sendConfirmationSafely({
   recipient,
@@ -111,6 +124,10 @@ async function sendConfirmationSafely({
     );
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                           Appointment Queries                             */
+/* -------------------------------------------------------------------------- */
 
 async function findOverlappingAppointments(
   therapistId,
@@ -157,6 +174,10 @@ async function getActiveAppointmentsForDay(therapistId, date) {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/*                               Holiday Checks                               */
+/* -------------------------------------------------------------------------- */
+
 async function isClinicOrTherapistHoliday(therapistId, date) {
   const dayStart = buildDateTime(date, "00:00");
   const nextDay = new Date(dayStart);
@@ -173,9 +194,64 @@ async function isClinicOrTherapistHoliday(therapistId, date) {
   return Boolean(holiday);
 }
 
-// Validates the selected date/time against the current schedule and bookings.
-// This check must still be paired with reliable database-level protection
-// against simultaneous conflicting booking requests.
+/* -------------------------------------------------------------------------- */
+/*                            Appointment Locking                             */
+/* -------------------------------------------------------------------------- */
+
+async function acquireAppointmentLock(therapistId, dateKey) {
+  const now = new Date();
+  const lockToken = crypto.randomUUID();
+
+  try {
+    const lock = await AppointmentLock.findOneAndUpdate(
+      {
+        therapist: therapistId,
+        dateKey,
+        lockedUntil: { $lte: now },
+      },
+      {
+        $set: {
+          lockToken,
+          lockedUntil: new Date(now.getTime() + LOCK_DURATION_MS),
+        },
+        $setOnInsert: {
+          therapist: therapistId,
+          dateKey,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
+
+    if (!lock) {
+      return null;
+    }
+
+    return lockToken;
+  } catch (error) {
+    // A duplicate-key error means another request already holds this lock.
+    if (error.code === 11000) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+async function releaseAppointmentLock(therapistId, dateKey, lockToken) {
+  await AppointmentLock.deleteOne({
+    therapist: therapistId,
+    dateKey,
+    lockToken,
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/*                         Selected Slot Validation                          */
+/* -------------------------------------------------------------------------- */
+
 async function validateSelectedSlot({ therapist, service, start }) {
   if (!mongoose.isValidObjectId(therapist._id)) {
     return { error: "Invalid therapist." };
@@ -184,10 +260,14 @@ async function validateSelectedSlot({ therapist, service, start }) {
   const duration = Number(service.duration);
 
   if (!Number.isFinite(duration) || duration <= 0) {
-    return { error: "The service duration is not configured correctly." };
+    return {
+      error: "The service duration is not configured correctly.",
+    };
   }
 
   if (
+    !(start instanceof Date) ||
+    Number.isNaN(start.getTime()) ||
     start.getSeconds() !== 0 ||
     start.getMilliseconds() !== 0 ||
     start <= new Date()
@@ -267,6 +347,10 @@ async function validateSelectedSlot({ therapist, service, start }) {
 
   return { end };
 }
+
+/* -------------------------------------------------------------------------- */
+/*                             Get Available Slots                            */
+/* -------------------------------------------------------------------------- */
 
 const getAvailableSlots = async (req, res) => {
   try {
@@ -372,7 +456,10 @@ const getAvailableSlots = async (req, res) => {
             Math.floor(endMinutes / 60)
           ).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
 
-          slotsByStartTime.set(startTime, { startTime, endTime });
+          slotsByStartTime.set(startTime, {
+            startTime,
+            endTime,
+          });
         }
       }
     }
@@ -400,7 +487,15 @@ const getAvailableSlots = async (req, res) => {
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/*                          Logged-in Patient Booking                        */
+/* -------------------------------------------------------------------------- */
+
 const bookAppointment = async (req, res) => {
+  let lockToken = null;
+  let lockTherapistId = null;
+  let lockDateKey = null;
+
   try {
     const {
       therapistId,
@@ -432,11 +527,16 @@ const bookAppointment = async (req, res) => {
 
     const start = new Date(appointmentDate);
 
-    if (Number.isNaN(start.getTime())) {
+    if (
+      Number.isNaN(start.getTime()) ||
+      start <= new Date() ||
+      start.getSeconds() !== 0 ||
+      start.getMilliseconds() !== 0
+    ) {
       return responseHandler(
         res,
         StatusCode.BAD_REQUEST,
-        "Please provide a valid appointment date and time."
+        "Please provide a valid future appointment time."
       );
     }
 
@@ -481,6 +581,23 @@ const bookAppointment = async (req, res) => {
       );
     }
 
+    // Acquire the lock before validating and creating the appointment.
+    lockTherapistId = therapist._id;
+    lockDateKey = getDateKey(start);
+
+    lockToken = await acquireAppointmentLock(
+      lockTherapistId,
+      lockDateKey
+    );
+
+    if (!lockToken) {
+      return responseHandler(
+        res,
+        StatusCode.CONFLICT,
+        "Another booking is being processed for this therapist. Please try again."
+      );
+    }
+
     const slotResult = await validateSelectedSlot({
       therapist,
       service,
@@ -508,6 +625,7 @@ const bookAppointment = async (req, res) => {
       status: "pending",
     });
 
+    // Email failure must not undo a successfully saved appointment.
     await sendConfirmationSafely({
       recipient: user?.email,
       patientName: user?.name,
@@ -538,10 +656,33 @@ const bookAppointment = async (req, res) => {
       StatusCode.SERVER_ERROR,
       "Failed to book appointment."
     );
+  } finally {
+    if (lockToken && lockTherapistId && lockDateKey) {
+      try {
+        await releaseAppointmentLock(
+          lockTherapistId,
+          lockDateKey,
+          lockToken
+        );
+      } catch (releaseError) {
+        console.error(
+          "Failed to release appointment lock:",
+          releaseError
+        );
+      }
+    }
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/*                              Guest Booking                                 */
+/* -------------------------------------------------------------------------- */
+
 const bookGuestAppointment = async (req, res) => {
+  let lockToken = null;
+  let lockTherapistId = null;
+  let lockDateKey = null;
+
   try {
     const {
       therapistId,
@@ -589,13 +730,22 @@ const bookGuestAppointment = async (req, res) => {
       );
     }
 
+    const normalizedName = guestName.trim();
+    const normalizedEmail = guestEmail.trim().toLowerCase();
+    const normalizedPhone = guestPhone.trim();
+
     const start = new Date(appointmentDate);
 
-    if (Number.isNaN(start.getTime())) {
+    if (
+      Number.isNaN(start.getTime()) ||
+      start <= new Date() ||
+      start.getSeconds() !== 0 ||
+      start.getMilliseconds() !== 0
+    ) {
       return responseHandler(
         res,
         StatusCode.BAD_REQUEST,
-        "Please provide a valid appointment date and time."
+        "Please provide a valid future appointment time."
       );
     }
 
@@ -620,6 +770,23 @@ const bookGuestAppointment = async (req, res) => {
       );
     }
 
+    // Use the same lock mechanism for guest bookings.
+    lockTherapistId = therapist._id;
+    lockDateKey = getDateKey(start);
+
+    lockToken = await acquireAppointmentLock(
+      lockTherapistId,
+      lockDateKey
+    );
+
+    if (!lockToken) {
+      return responseHandler(
+        res,
+        StatusCode.CONFLICT,
+        "Another booking is being processed for this therapist. Please try again."
+      );
+    }
+
     const slotResult = await validateSelectedSlot({
       therapist,
       service,
@@ -637,9 +804,9 @@ const bookGuestAppointment = async (req, res) => {
     }
 
     const appointment = await Appointment.create({
-      guestName: guestName.trim(),
-      guestEmail: guestEmail.trim().toLowerCase(),
-      guestPhone: guestPhone.trim(),
+      guestName: normalizedName,
+      guestEmail: normalizedEmail,
+      guestPhone: normalizedPhone,
       therapist: therapist._id,
       service: service._id,
       appointmentDate: start,
@@ -650,8 +817,8 @@ const bookGuestAppointment = async (req, res) => {
     });
 
     await sendConfirmationSafely({
-      recipient: guestEmail.trim().toLowerCase(),
-      patientName: guestName.trim(),
+      recipient: normalizedEmail,
+      patientName: normalizedName,
       service,
       therapist,
       appointment,
@@ -679,12 +846,30 @@ const bookGuestAppointment = async (req, res) => {
       StatusCode.SERVER_ERROR,
       "Failed to book guest appointment."
     );
+  } finally {
+    if (lockToken && lockTherapistId && lockDateKey) {
+      try {
+        await releaseAppointmentLock(
+          lockTherapistId,
+          lockDateKey,
+          lockToken
+        );
+      } catch (releaseError) {
+        console.error(
+          "Failed to release appointment lock:",
+          releaseError
+        );
+      }
+    }
   }
 };
+
+/* -------------------------------------------------------------------------- */
+/*                                  Exports                                   */
+/* -------------------------------------------------------------------------- */
 
 module.exports = {
   getAvailableSlots,
   bookAppointment,
   bookGuestAppointment,
 };
-

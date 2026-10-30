@@ -3,31 +3,34 @@ const mongoose = require("mongoose");
 
 const appointmentSchema = new mongoose.Schema(
   {
-   patient: {
-       type: mongoose.Schema.Types.ObjectId,
-       ref: "Patient",
-        required: false
-      },
+    patient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Patient",
+      required: false
+    },
     guestName: {
-       type: String,
-       trim: true
-      },
+      type: String,
+      trim: true,
+      maxlength: [100, "Guest name must be 100 characters or fewer"]
+    },
     guestPhone: {
-       type: String,
-       trim: true
-      },
-      guestEmail: {
-        type: String,
-        trim: true,
-        lowercase: true
-      },
+      type: String,
+      trim: true,
+      maxlength: [20, "Guest phone must be 20 characters or fewer"]
+    },
+    guestEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      maxlength: [254, "Guest email must be 254 characters or fewer"]
+    },
     consentGiven: {
-       type: Boolean,
-       required: true,
-       validate: {
-       validator: (value) => value === true,
-       message: "Consent must be given to book an appointment."
-               }
+      type: Boolean,
+      required: true,
+      validate: {
+        validator: (value) => value === true,
+        message: "Consent must be given to book an appointment."
+      }
     },
     therapist: {
       type: mongoose.Schema.Types.ObjectId,
@@ -43,22 +46,32 @@ const appointmentSchema = new mongoose.Schema(
       type: Date,
       required: true
     },
-     appointmentEnd: {
+    appointmentEnd: {
       type: Date,
       required: true,
       validate: {
         validator: function (value) {
-          return value > this.appointmentDate;
+          return (
+            this.appointmentDate instanceof Date &&
+            !Number.isNaN(this.appointmentDate.getTime()) &&
+            value > this.appointmentDate
+          );
         },
         message: "Appointment end time must be after start time."
       }
     },
     status: {
       type: String,
-      enum: [ "pending", "confirmed", "completed", "cancelled", "no-show"],
+      enum: [
+        "pending",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "no-show"
+      ],
       default: "pending"
     },
-     notes: {
+    notes: {
       type: String,
       trim: true,
       default: "",
@@ -77,4 +90,5 @@ appointmentSchema.index(
     }
   }
 );
+
 module.exports = mongoose.model("Appointment", appointmentSchema);
