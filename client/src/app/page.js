@@ -2,102 +2,225 @@ import Link from "next/link";
 import { getList } from "../lib/api";
 
 const steps = [
-  { title: "Book", text: "Choose a service and a time that suits you." },
-  { title: "Assessment", text: "Your physiotherapist assesses your condition." },
-  { title: "Treatment plan", text: "You get a plan made for your recovery." },
-  { title: "Recovery", text: "Regular sessions help you move better again." },
+  {
+    title: "Book",
+    text: "Choose a service and a time that suits you.",
+  },
+  {
+    title: "Assessment",
+    text: "Your physiotherapist assesses your condition.",
+  },
+  {
+    title: "Treatment plan",
+    text: "Your physiotherapist discusses an appropriate plan with you.",
+  },
+  {
+    title: "Recovery",
+    text: "Follow the plan agreed with your physiotherapist.",
+  },
 ];
 
-const services = ["[Service 1]", "[Service 2]", "[Service 3]", "[Service 4]"];
-const conditions = ["Back pain", "Neck pain", "Knee pain", "Frozen shoulder", "Sciatica", "Sports injuries"];
+export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const faqs = (await getList("/api/faqs")).slice(0, 3);
-  const apiConditions = await getList("/api/conditions");
-  const conditionNames = apiConditions.length
-    ? apiConditions.map((c) => c.title || c.name)
-    : conditions;
+  const [faqs, conditions, services] = await Promise.all([
+    getList("/api/faqs"),
+    getList("/api/conditions"),
+    getList("/api/services/getServices"),
+  ]);
 
   return (
     <div>
+      {/* Hero */}
       <section className="bg-[var(--color-light)] px-4 py-16 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold text-[var(--color-dark)] max-w-3xl mx-auto">
+        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-primary)]">
+          Nexmove Physiotherapy Clinic
+        </p>
+
+        <h1 className="mx-auto max-w-3xl text-4xl font-bold text-[var(--color-dark)] md:text-5xl">
           Move better. Feel better. Your next move starts here.
         </h1>
-        <p className="mt-4 text-lg max-w-2xl mx-auto">
-          Professional physiotherapy care for pain relief and recovery.
+
+        <p className="mx-auto mt-4 max-w-2xl text-lg">
+          Explore the clinic&apos;s listed services and request an appointment.
         </p>
-        <Link href="/book" className="inline-block mt-8 bg-[var(--color-primary)] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+
+        <Link
+          href="/book"
+          className="mt-8 inline-block rounded-lg bg-[var(--color-primary)] px-6 py-3 font-semibold text-white hover:opacity-90"
+        >
           Book Appointment
         </Link>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 py-12">
-        <h2 className="text-3xl font-bold text-[var(--color-dark)] mb-6">Why choose Nexmove</h2>
-        <p>[Reasons to be filled from client content]</p>
-      </section>
+      {/* Services */}
+      <section className="mx-auto max-w-6xl px-4 py-12">
+        <h2 className="mb-6 text-3xl font-bold text-[var(--color-dark)]">
+          Our Services
+        </h2>
 
-      <section className="bg-[var(--color-light)] px-4 py-12">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--color-dark)] mb-6">Our services</h2>
+        {services.length === 0 ? (
+          <p>
+            Current service details are not available online yet. Please
+            contact the clinic for verified information.
+          </p>
+        ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {services.map((s) => (
-              <div key={s} className="bg-white rounded-xl p-5 shadow-sm">{s}</div>
+            {services.slice(0, 4).map((service) => (
+              <article
+                key={service._id}
+                className="rounded-xl border bg-white p-5 shadow-sm"
+              >
+                <h3 className="font-bold text-[var(--color-dark)]">
+                  {service.name}
+                </h3>
+
+                {service.description && (
+                  <p className="mt-2 text-sm text-gray-600">
+                    {service.description}
+                  </p>
+                )}
+
+                {service._id && (
+                  <Link
+                    href={`/services/${service._id}`}
+                    className="mt-3 inline-block text-[var(--color-primary)] underline"
+                  >
+                    Service details
+                  </Link>
+                )}
+              </article>
             ))}
           </div>
+        )}
+
+        <Link
+          href="/services"
+          className="mt-5 inline-block text-[var(--color-primary)] underline"
+        >
+          View all services
+        </Link>
+      </section>
+
+      {/* Conditions */}
+      <section className="bg-[var(--color-light)] px-4 py-12">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="mb-6 text-3xl font-bold text-[var(--color-dark)]">
+            Conditions We Treat
+          </h2>
+
+          {conditions.length === 0 ? (
+            <p>
+              Condition information is being updated. Please contact the
+              clinic with questions about your care.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {conditions.slice(0, 8).map((condition) => (
+                <Link
+                  key={condition._id || condition.slug}
+                  href={`/conditions/${condition.slug}`}
+                  className="rounded-full bg-white px-4 py-2 shadow-sm hover:text-[var(--color-primary)]"
+                >
+                  {condition.title}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          <Link
+            href="/conditions"
+            className="mt-5 inline-block text-[var(--color-primary)] underline"
+          >
+            Explore conditions
+          </Link>
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 py-12">
-        <h2 className="text-3xl font-bold text-[var(--color-dark)] mb-6">Conditions we treat</h2>
-        <div className="flex flex-wrap gap-3">
-          {conditionNames.map((c) => (
-            <span key={c} className="bg-[var(--color-light)] px-4 py-2 rounded-full">{c}</span>
+      {/* Process */}
+      <section className="mx-auto max-w-6xl px-4 py-12">
+        <h2 className="mb-6 text-3xl font-bold text-[var(--color-dark)]">
+          How It Works
+        </h2>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((item, index) => (
+            <article
+              key={item.title}
+              className="rounded-xl border bg-white p-5 shadow-sm"
+            >
+              <p className="text-xl font-bold text-[var(--color-primary)]">
+                {index + 1}. {item.title}
+              </p>
+
+              <p className="mt-2">{item.text}</p>
+            </article>
           ))}
         </div>
       </section>
 
+      {/* FAQs */}
       <section className="bg-[var(--color-light)] px-4 py-12">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--color-dark)] mb-6">How it works</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {steps.map((s, i) => (
-              <div key={s.title} className="bg-white rounded-xl p-5 shadow-sm">
-                <div className="text-[var(--color-primary)] font-bold text-xl">{i + 1}. {s.title}</div>
-                <p className="mt-2">{s.text}</p>
-              </div>
-            ))}
-          </div>
+        <div className="mx-auto max-w-6xl">
+          <h2 className="mb-5 text-3xl font-bold text-[var(--color-dark)]">
+            Frequently Asked Questions
+          </h2>
+
+          {faqs.length === 0 ? (
+            <p>Frequently asked questions are not available online yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {faqs.slice(0, 3).map((faq) => (
+                <article
+                  key={faq._id || faq.question}
+                  className="rounded-xl bg-white p-4"
+                >
+                  <h3 className="font-semibold text-[var(--color-dark)]">
+                    {faq.question}
+                  </h3>
+                  <p className="mt-1">{faq.answer}</p>
+                </article>
+              ))}
+            </div>
+          )}
+
+          <Link
+            href="/faq"
+            className="mt-4 inline-block text-[var(--color-primary)] underline"
+          >
+            See all FAQs
+          </Link>
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 py-12">
-        <h2 className="text-3xl font-bold text-[var(--color-dark)] mb-4">Frequently asked questions</h2>
-        {faqs.length === 0 ? (
-          <p>FAQs will appear here soon.</p>
-        ) : (
-          <div className="space-y-3">
-            {faqs.map((f) => (
-              <div key={f._id || f.question} className="bg-[var(--color-light)] rounded-xl p-4">
-                <h3 className="font-semibold text-[var(--color-dark)]">{f.question}</h3>
-                <p className="mt-1">{f.answer}</p>
-              </div>
-            ))}
-          </div>
-        )}
-        <Link href="/faq" className="inline-block mt-4 text-[var(--color-primary)] underline">See all FAQs</Link>
-      </section>
+      {/* Clinic information already supplied by the team */}
+      <section className="mx-auto max-w-6xl px-4 py-12">
+        <h2 className="mb-4 text-3xl font-bold text-[var(--color-dark)]">
+          Visit Nexmove
+        </h2>
 
-      <section className="max-w-6xl mx-auto px-4 py-12">
-        <h2 className="text-3xl font-bold text-[var(--color-dark)] mb-4">Location and timings</h2>
         <p>Riyaz Ul Jannah Colony, Daewoo Road, Faisalabad</p>
-<p>Men: 9 AM to 1 PM. Women and children: 1 PM to 10 PM.</p>
+
+        <p className="mt-2">
+          Men: 9 AM to 1 PM. Women and children: 1 PM to 10 PM.
+        </p>
+
+        <p className="mt-2 text-sm text-gray-600">
+          For current appointment availability, please contact the clinic.
+        </p>
       </section>
 
-      <section className="bg-[var(--color-primary)] text-white px-4 py-14 text-center">
-        <h2 className="text-3xl font-bold">Ready to start your recovery?</h2>
-        <Link href="/book" className="inline-block mt-6 bg-white text-[var(--color-primary)] px-6 py-3 rounded-lg font-semibold">
-          Book Appointment
+      {/* CTA */}
+      <section className="bg-[var(--color-primary)] px-4 py-14 text-center text-white">
+        <h2 className="text-3xl font-bold">
+          Ready to take your next step?
+        </h2>
+
+        <Link
+          href="/book"
+          className="mt-6 inline-block rounded-lg bg-white px-6 py-3 font-semibold text-[var(--color-primary)]"
+        >
+          Request an Appointment
         </Link>
       </section>
     </div>
