@@ -4,6 +4,12 @@ import Link from "next/link";
 import BodyMap from "./BodyMap";
 import { DURATIONS, AGGRAVATING, RED_FLAGS, suggestions } from "../lib/painData";
 
+function Err({ message }) {
+  return message ? (
+    <p role="alert" className="text-red-700 text-sm mt-1">{message}</p>
+  ) : null;
+}
+
 export default function PainAssessment() {
   const [view, setView] = useState("front");
   const [areas, setAreas] = useState({});
@@ -99,7 +105,6 @@ export default function PainAssessment() {
     );
   }
 
-  const Err = ({ k }) => (errors[k] ? <p role="alert" className="text-red-700 text-sm mt-1">{errors[k]}</p> : null);
 
   return (
     <form onSubmit={submit} noValidate className="max-w-2xl mx-auto px-4 py-8 space-y-8">
@@ -120,7 +125,7 @@ export default function PainAssessment() {
         </div>
         <BodyMap view={view} selected={Object.keys(areas)} onToggle={toggle} />
         <p className="mt-2">Selected: {Object.values(areas).join(", ") || "none"}</p>
-        <Err k="areas" />
+        <Err message={errors.areas} />
       </fieldset>
 
       <div>
@@ -128,7 +133,7 @@ export default function PainAssessment() {
         <input id="level" type="range" min="0" max="10" value={level === "" ? 0 : level}
           onChange={(e) => setLevel(e.target.value)} className="w-full" />
         <p>{level === "" ? "Move the slider to choose" : `${level} / 10`}</p>
-        <Err k="level" />
+        <Err message={errors.level} />
       </div>
 
       <div>
@@ -137,7 +142,7 @@ export default function PainAssessment() {
           <option value="">Choose</option>
           {DURATIONS.map((d) => <option key={d}>{d}</option>)}
         </select>
-        <Err k="duration" />
+        <Err message={errors.duration} />
       </div>
 
       <fieldset>
@@ -157,7 +162,7 @@ export default function PainAssessment() {
           <legend className="text-xl font-bold text-[var(--color-dark)] mb-2">{q}</legend>
           <label className="mr-6"><input type="radio" name={k} checked={val === "yes"} onChange={() => set("yes")} /> Yes</label>
           <label><input type="radio" name={k} checked={val === "no"} onChange={() => set("no")} /> No</label>
-          <Err k={k} />
+          <Err message={errors[k]} />
         </fieldset>
       ))}
 
