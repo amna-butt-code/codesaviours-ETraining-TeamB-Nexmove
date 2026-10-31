@@ -1,4 +1,6 @@
+
 import Link from "next/link";
+import Reveal from "../../components/Reveal";
 import { getList } from "../../lib/api";
 
 export const metadata = {
@@ -18,12 +20,10 @@ export default async function Conditions() {
         <div className="nm-container nm-directory-hero-grid">
           <div>
             <span className="nm-directory-eyebrow">
-              MOVEMENT <span aria-hidden="true">|</span> WELLNESS
+              Movement and wellness
             </span>
 
-            <h1>
-              Understand your <em>movement.</em>
-            </h1>
+            <h1>Understand your movement.</h1>
 
             <p>
               Browse the condition information currently available on
@@ -32,8 +32,11 @@ export default async function Conditions() {
             </p>
           </div>
 
-          <aside className="nm-directory-highlight">
-            <span>TAKE IT ONE STEP AT A TIME</span>
+          <aside
+            className="nm-directory-highlight"
+            aria-label="A note about condition information"
+          >
+            <span>Take it one step at a time</span>
             <strong>Information can be a useful starting point.</strong>
             <p>Every person&apos;s situation is different.</p>
           </aside>
@@ -45,8 +48,9 @@ export default async function Conditions() {
           <div className="nm-directory-heading">
             <div>
               <span className="nm-directory-eyebrow">
-                CONDITION INFORMATION
+                Condition information
               </span>
+
               <h2>Browse topics</h2>
             </div>
 
@@ -59,10 +63,12 @@ export default async function Conditions() {
           {conditions.length === 0 ? (
             <div className="nm-directory-empty">
               <h3>Condition information is being updated</h3>
+
               <p>
                 There are no condition entries available online at the
                 moment. Contact the clinic with your questions.
               </p>
+
               <Link href="/contact" className="nm-button">
                 Contact the clinic
               </Link>
@@ -70,39 +76,47 @@ export default async function Conditions() {
           ) : (
             <div className="nm-directory-grid">
               {conditions.map((condition, index) => (
-                <article
-                  className="nm-directory-card"
-                  key={condition._id || condition.slug}
+                <Reveal
+                  key={
+                    condition._id ||
+                    condition.slug ||
+                    `${condition.title || "condition"}-${index}`
+                  }
                 >
-                  <div className="nm-directory-card-top">
-                    <span className="nm-directory-number">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span className="nm-directory-card-mark" aria-hidden="true">
-                      N
-                    </span>
-                  </div>
+                  <article className="nm-directory-card">
+                    <div className="nm-directory-card-top">
+                      <span
+                        className="nm-directory-card-mark"
+                        aria-hidden="true"
+                      />
+                    </div>
 
-                  <h3>{condition.title}</h3>
+                    <h3>{condition.title}</h3>
 
-                  <p>
-                    {condition.summary?.trim() ||
-                      "Contact the clinic for more information about this topic."}
-                  </p>
+                    <p>
+                      {condition.summary?.trim() ||
+                        "Contact the clinic for more information about this topic."}
+                    </p>
 
-                  {condition.slug ? (
-                    <Link
-                      href={`/conditions/${encodeURIComponent(condition.slug)}`}
-                      className="nm-directory-link"
-                    >
-                      Read condition information
-                    </Link>
-                  ) : (
-                    <Link href="/contact" className="nm-directory-link">
-                      Contact the clinic
-                    </Link>
-                  )}
-                </article>
+                    {condition.slug ? (
+                      <Link
+                        href={`/conditions/${encodeURIComponent(
+                          condition.slug
+                        )}`}
+                        className="nm-directory-link"
+                      >
+                        Read condition information
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/contact"
+                        className="nm-directory-link"
+                      >
+                        Contact the clinic
+                      </Link>
+                    )}
+                  </article>
+                </Reveal>
               ))}
             </div>
           )}
