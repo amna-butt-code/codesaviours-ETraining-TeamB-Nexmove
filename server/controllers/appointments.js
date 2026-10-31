@@ -134,7 +134,7 @@ async function findOverlappingAppointments(
   start,
   end,
   session = null
-) => {
+) {
   const query = Appointment.find({
     therapist: therapistId,
     status: { $in: ACTIVE_APPOINTMENT_STATUSES },
@@ -870,6 +870,21 @@ if (
       StatusCode.SERVER_ERROR,
       "Failed to book guest appointment."
     );
+  }finally {
+    if (lockToken && lockTherapistId && lockDateKey) {
+      try {
+        await releaseAppointmentLock(
+          lockTherapistId,
+          lockDateKey,
+          lockToken
+        );
+      } catch (releaseError) {
+        console.error(
+          "Failed to release appointment lock:",
+          releaseError
+        );
+      }
+    }
   }
 };
 
