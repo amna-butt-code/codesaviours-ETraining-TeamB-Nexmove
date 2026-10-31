@@ -49,6 +49,11 @@ export default async function TherapistProfile({ params }) {
       )
     : [];
 
+    const displayTiming =
+  typeof therapist.displayTiming === "string"
+    ? therapist.displayTiming.trim()
+    : "";
+
   return (
     <main className="nm-detail-page">
       <section className="nm-detail-hero">
@@ -89,6 +94,13 @@ export default async function TherapistProfile({ params }) {
                 <p>{qualifications.join(", ")}</p>
               </div>
             )}
+
+            {displayTiming && (
+  <div className="nm-team-profile-section">
+    <h3>Clinic timing</h3>
+    <p>{displayTiming}</p>
+  </div>
+)}
 
             {specialties.length > 0 && (
               <div className="nm-team-profile-section">
