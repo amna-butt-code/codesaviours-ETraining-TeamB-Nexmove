@@ -1,64 +1,121 @@
+
+import Image from "next/image";
+import Link from "next/link";
+
 const quickLinks = [
   { name: "About", href: "/about" },
   { name: "Services", href: "/services" },
-  { name: "Conditions We Treat", href: "/conditions" },
+  { name: "Conditions", href: "/conditions" },
   { name: "Our Team", href: "/team" },
   { name: "Packages & Fees", href: "/packages" },
+];
+
+const resourceLinks = [
   { name: "Blog", href: "/blog" },
   { name: "FAQ", href: "/faq" },
-  { name: "Contact", href: "/contact" },
+  { name: "Ask Nexmove", href: "/chat" },
+  { name: "Pain Assessment", href: "/pain-assessment" },
+  { name: "Book Appointment", href: "/book" },
 ];
 
 export default function Footer() {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="bg-[var(--color-dark)] text-white mt-auto">
-      <div className="max-w-7xl mx-auto px-4 py-10 grid gap-8 md:grid-cols-3">
+    <footer className="nm-footer">
+      <div className="nm-container nm-footer-main">
         <div>
-          <h3 className="text-2xl font-bold mb-3">Nexmove</h3>
-          <p className="text-gray-200">
-            Nexmove Physiotherapy Clinic helps you move better and recover
-            faster. Rehabilitation and wellness. Your next move starts here
+          <Link href="/" aria-label="Nexmove home">
+            <Image
+              src="/images/nexmove-logo.png"
+              alt="Nexmove Physiotherapy Clinic"
+              width={310}
+              height={110}
+              className="nm-footer-logo"
+            />
+          </Link>
+
+          <p className="nm-footer-description">
+            Nexmove Physiotherapy Clinic, Faisalabad.
+            Explore our listed physiotherapy services and contact
+            the clinic to discuss your appointment.
           </p>
+
+          <a
+            href="https://www.instagram.com/nexmove_/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Instagram
+          </a>
         </div>
 
         <div>
-          <h4 className="font-semibold mb-3">Quick Links</h4>
-          <ul className="space-y-2">
-            {quickLinks.map((l) => (
-              <li key={l.name}>
-                <a href={l.href} className="text-gray-200 hover:text-white">
-                  {l.name}
-                </a>
+          <h2 className="nm-footer-heading">Explore</h2>
+
+          <ul className="nm-footer-links">
+            {quickLinks.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href}>{item.name}</Link>
               </li>
             ))}
           </ul>
         </div>
 
-        <div>
-<h4 className="font-semibold mb-3">Visit Us</h4>
-<p className="text-gray-200">Riyaz Ul Jannah Colony, Daewoo Road, Faisalabad</p>
-<p className="text-gray-200 mt-2">Phone: 0326 6312211</p>
-<p className="text-gray-200">Men: 9 AM to 1 PM</p>
-<p className="text-gray-200">Women and children: 1 PM to 10 PM</p>
-<a href="https://share.google/i4m42aMPoyZVJKvn3" target="_blank" rel="noopener noreferrer" className="text-gray-200 underline mt-2 inline-block">
-  View on Google Maps
-</a>
-<p className="text-gray-200 mt-3">
-  <a href="https://www.instagram.com/nexmove_/" target="_blank" rel="noopener noreferrer" className="underline">Instagram</a>
-</p>
+        <div className="nm-footer-contact">
+          <h2 className="nm-footer-heading">Visit the clinic</h2>
+
+          <p>
+            Riyaz Ul Jannah Colony,
+            Daewoo Road, Faisalabad
+          </p>
+
+          <p>
+            <a href="tel:03266312211">0326 6312211</a>
+          </p>
+
+          <p>
+            Men: 9 AM - 1 PM
+            <br />
+            Women and children: 1 PM - 10 PM
+          </p>
+
+          <a
+            href="https://share.google/i4m42aMPoyZVJKvn3"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View location on Google Maps
+          </a>
+
+          <div>
+            <h3 className="nm-footer-heading">More from Nexmove</h3>
+
+            <ul className="nm-footer-links">
+              {resourceLinks.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href}>{item.name}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
 
-      <div className="border-t border-white/20 px-4 py-4 text-center text-sm text-gray-300">
-        <div className="flex flex-wrap justify-center gap-4 mb-2">
-          <a href="/privacy" className="hover:text-white">Privacy Policy</a>
-          <a href="/terms" className="hover:text-white">Terms</a>
+      <div className="nm-footer-bottom">
+        <div className="nm-container nm-footer-bottom-inner">
+          <p>
+            &copy; {year} Nexmove Physiotherapy Clinic. All rights reserved.
+            <br />
+            Website information is general guidance and is not a
+            medical diagnosis or a substitute for professional advice.
+          </p>
+
+          <div className="nm-footer-legal">
+            <Link href="/privacy">Privacy Policy</Link>
+            <Link href="/terms">Terms & Conditions</Link>
+          </div>
         </div>
-        <p>
-          Medical disclaimer: Information on this website is for general guidance
-          only and is not medical advice or a diagnosis.
-        </p>
-        <p className="mt-1">© 2026 Nexmove Physiotherapy Clinic</p>
       </div>
     </footer>
   );
