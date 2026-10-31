@@ -39,7 +39,6 @@ export default function Contact() {
         <div className="space-y-2">
           <p>Address: Riyaz Ul Jannah Colony, Daewoo Road, Faisalabad</p>
           <p>Phone: 0326 6312211</p>
-          <p>Email: [Clinic email]</p>
           <p>Men: 9 AM to 1 PM</p>
           <p>Women and children: 1 PM to 10 PM</p>
           <p>

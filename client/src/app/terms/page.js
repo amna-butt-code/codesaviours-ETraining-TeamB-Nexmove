@@ -16,7 +16,7 @@ export default function Terms() {
         </div>
         <div>
           <h2 className="text-2xl font-bold text-[var(--color-dark)] mb-2">Appointments</h2>
-          <p>Appointments are subject to confirmation. Cancellation and rescheduling are allowed up to [time] before the appointment.</p>
+          <p>Appointments are subject to confirmation. To request a cancellation or reschedule, contact the clinic directly. Changes are subject to confirmation.</p>
         </div>
         <div>
           <h2 className="text-2xl font-bold text-[var(--color-dark)] mb-2">Use of the website</h2>
@@ -24,7 +24,9 @@ export default function Terms() {
         </div>
         <div>
           <h2 className="text-2xl font-bold text-[var(--color-dark)] mb-2">Contact</h2>
-          <p>[Clinic email and phone]</p>
+          <p>
+  Phone: <a href="tel:03266312211">0326 6312211</a>
+</p>
         </div>
         <p className="text-sm">This is a draft and must be reviewed by the clinic before launch.</p>
       </section>

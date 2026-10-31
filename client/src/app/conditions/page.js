@@ -1,60 +1,119 @@
 import Link from "next/link";
-import PageHero from "../../components/PageHero";
 import { getList } from "../../lib/api";
 
 export const metadata = {
-  title: "Conditions We Treat | Nexmove Physiotherapy Clinic",
+  title: "Conditions | Nexmove Physiotherapy Clinic",
   description:
-    "Browse condition information published by Nexmove Physiotherapy Clinic.",
+    "Browse condition information currently published by Nexmove.",
 };
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function Conditions() {
   const conditions = await getList("/api/conditions");
 
   return (
-    <div>
-      <PageHero
-        title="Conditions We Treat"
-        subtitle="Information currently published by the clinic."
-      />
+    <main className="nm-directory-page">
+      <section className="nm-directory-hero">
+        <div className="nm-container nm-directory-hero-grid">
+          <div>
+            <span className="nm-directory-eyebrow">
+              MOVEMENT <span aria-hidden="true">|</span> WELLNESS
+            </span>
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 py-10 sm:grid-cols-2 lg:grid-cols-3">
-        {conditions.length === 0 ? (
-          <p className="sm:col-span-2 lg:col-span-3">
-            Condition information is not available online yet. Contact the
-            clinic with questions about an individual concern.
-          </p>
-        ) : (
-          conditions.map((condition) => (
-            <article
-              key={condition._id || condition.slug}
-              className="rounded-xl border bg-white p-5 shadow-sm"
-            >
-              <h2 className="text-xl font-bold text-[var(--color-dark)]">
-                {condition.title}
-              </h2>
+            <h1>
+              Understand your <em>movement.</em>
+            </h1>
 
-              <p className="mt-2 text-gray-700">
-                {condition.summary}
-              </p>
+            <p>
+              Browse the condition information currently available on
+              the Nexmove website. For advice about your own symptoms,
+              contact a qualified healthcare professional.
+            </p>
+          </div>
 
-              <Link
-                href={`/conditions/${condition.slug}`}
-                className="mt-4 inline-block text-[var(--color-primary)] underline"
-              >
-                Read More
-              </Link>
-            </article>
-          ))
-        )}
+          <aside className="nm-directory-highlight">
+            <span>TAKE IT ONE STEP AT A TIME</span>
+            <strong>Information can be a useful starting point.</strong>
+            <p>Every person&apos;s situation is different.</p>
+          </aside>
+        </div>
       </section>
 
-      <p className="mx-auto max-w-6xl px-4 pb-10 text-sm text-gray-600">
-        Website information is general guidance, not a diagnosis. A
-        qualified clinician should assess individual symptoms.
-      </p>
-    </div>
+      <section className="nm-directory-section">
+        <div className="nm-container">
+          <div className="nm-directory-heading">
+            <div>
+              <span className="nm-directory-eyebrow">
+                CONDITION INFORMATION
+              </span>
+              <h2>Browse topics</h2>
+            </div>
+
+            <span className="nm-directory-count">
+              {conditions.length}{" "}
+              {conditions.length === 1 ? "topic" : "topics"} listed
+            </span>
+          </div>
+
+          {conditions.length === 0 ? (
+            <div className="nm-directory-empty">
+              <h3>Condition information is being updated</h3>
+              <p>
+                There are no condition entries available online at the
+                moment. Contact the clinic with your questions.
+              </p>
+              <Link href="/contact" className="nm-button">
+                Contact the clinic
+              </Link>
+            </div>
+          ) : (
+            <div className="nm-directory-grid">
+              {conditions.map((condition, index) => (
+                <article
+                  className="nm-directory-card"
+                  key={condition._id || condition.slug}
+                >
+                  <div className="nm-directory-card-top">
+                    <span className="nm-directory-number">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="nm-directory-card-mark" aria-hidden="true">
+                      N
+                    </span>
+                  </div>
+
+                  <h3>{condition.title}</h3>
+
+                  <p>
+                    {condition.summary?.trim() ||
+                      "Contact the clinic for more information about this topic."}
+                  </p>
+
+                  {condition.slug ? (
+                    <Link
+                      href={`/conditions/${encodeURIComponent(condition.slug)}`}
+                      className="nm-directory-link"
+                    >
+                      Read condition information
+                    </Link>
+                  ) : (
+                    <Link href="/contact" className="nm-directory-link">
+                      Contact the clinic
+                    </Link>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+
+          <p className="nm-directory-disclaimer">
+            This information is for general educational purposes. It is
+            not a diagnosis or a substitute for an individual assessment
+            by a qualified healthcare professional.
+          </p>
+        </div>
+      </section>
+    </main>
   );
 }

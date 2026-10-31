@@ -13,11 +13,10 @@ const therapistSchema = new mongoose.Schema(
             required:true,
             trim:true
         },
-        qualification:{
-            type:[String],
-            required:true,
-            default:[],
-        },
+qualification: {
+    type: [String],
+    default: [],
+},
         specialties: {
             type: [String],
             default: []

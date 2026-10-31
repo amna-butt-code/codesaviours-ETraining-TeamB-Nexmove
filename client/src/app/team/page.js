@@ -1,14 +1,28 @@
 import Link from "next/link";
-import PageHero from "../../components/PageHero";
 import { getList } from "../../lib/api";
 
 export const metadata = {
-  title: "Our Team | Nexmove Physiotherapy Clinic",
+  title: "Our Physiotherapists | Nexmove",
   description:
-    "View therapist profiles published by Nexmove Physiotherapy Clinic.",
+    "Meet the physiotherapists listed in the Nexmove clinic directory.",
 };
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
+function getInitials(name) {
+  const words = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter((word) => !/^(dr\.?|pt)$/i.test(word));
+
+  if (words.length === 0) return "N";
+
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+}
 
 export default async function Team() {
   const therapists = await getList(
@@ -17,70 +31,104 @@ export default async function Team() {
   );
 
   const activeTherapists = therapists.filter(
-    (therapist) => therapist.inactive !== true
+    (therapist) => therapist.inactive !== true && therapist.name
   );
 
   return (
-    <div>
-      <PageHero
-        title="Our Team"
-        subtitle="Therapist profiles currently listed by the clinic."
-      />
+    <main className="nm-directory-page">
+      <section className="nm-directory-hero">
+        <div className="nm-container nm-directory-hero-grid">
+          <div>
+            <span className="nm-directory-eyebrow">
+              THE PEOPLE AT NEXMOVE
+            </span>
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 py-10 sm:grid-cols-2 lg:grid-cols-3">
-        {activeTherapists.length === 0 ? (
-          <p className="sm:col-span-2 lg:col-span-3">
-            Therapist profiles are not available online yet. Please contact
-            the clinic for current information.
-          </p>
-        ) : (
-          activeTherapists.map((therapist) => (
-            <article
-              key={therapist._id}
-              className="overflow-hidden rounded-xl border bg-white shadow-sm"
-            >
-              {therapist.profileImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={therapist.profileImage}
-                  alt={`Portrait of ${therapist.name}`}
-                  className="h-52 w-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex h-40 items-center justify-center bg-[var(--color-light)] text-sm text-gray-500">
-                  Profile image not provided
-                </div>
-              )}
+            <h1>
+              Meet the <em>team.</em>
+            </h1>
 
-              <div className="p-5">
-                <h2 className="text-xl font-bold text-[var(--color-dark)]">
-                  {therapist.name}
-                </h2>
+            <p>
+              Get to know the physiotherapists listed in the Nexmove
+              clinic directory.
+            </p>
+          </div>
 
-                {therapist.qualification?.length > 0 && (
-                  <p className="mt-2 text-sm text-gray-600">
-                    {therapist.qualification.join(", ")}
-                  </p>
-                )}
-
-                {therapist.specialties?.length > 0 && (
-                  <p className="mt-1 text-sm">
-                    {therapist.specialties.join(" · ")}
-                  </p>
-                )}
-
-                <Link
-                  href={`/team/${therapist._id}`}
-                  className="mt-4 inline-block text-[var(--color-primary)] underline"
-                >
-                  View Profile
-                </Link>
-              </div>
-            </article>
-          ))
-        )}
+          <aside className="nm-directory-highlight">
+            <span>REHABILITATION | WELLNESS</span>
+            <strong>Your next move starts here.</strong>
+            <p>Helping you move better.</p>
+          </aside>
+        </div>
       </section>
-    </div>
+
+      <section className="nm-directory-section">
+        <div className="nm-container">
+          <div className="nm-directory-heading">
+            <div>
+              <span className="nm-directory-eyebrow">
+                OUR PHYSIOTHERAPISTS
+              </span>
+              <h2>People directory</h2>
+            </div>
+
+            <span className="nm-directory-count">
+              {activeTherapists.length}{" "}
+              {activeTherapists.length === 1 ? "profile" : "profiles"} listed
+            </span>
+          </div>
+
+          {activeTherapists.length === 0 ? (
+            <div className="nm-directory-empty">
+              <h3>Team profiles are being updated</h3>
+              <p>
+                Therapist profiles will appear here once they have been
+                added to the clinic directory. Contact Nexmove for
+                current team information.
+              </p>
+              <Link href="/contact" className="nm-button">
+                Contact the clinic
+              </Link>
+            </div>
+          ) : (
+            <div className="nm-team-grid">
+              {activeTherapists.map((therapist) => (
+                <article className="nm-team-card" key={therapist._id}>
+                  <div className="nm-team-avatar" aria-hidden="true">
+                    <span>{getInitials(therapist.name)}</span>
+                  </div>
+
+                  <div className="nm-team-card-content">
+                    <span className="nm-team-role">
+                      PHYSIOTHERAPIST
+                    </span>
+
+                    <h3>{therapist.name}</h3>
+
+                    <p>
+                      Professional profile details will be added after
+                      confirmation by the clinic.
+                    </p>
+
+                    {therapist._id && (
+                      <Link
+                        href={`/team/${encodeURIComponent(therapist._id)}`}
+                        className="nm-directory-link"
+                      >
+                        View profile
+                      </Link>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+
+          <p className="nm-directory-disclaimer">
+            Photos, qualifications and professional details are not
+            displayed until confirmed by the clinic.
+          </p>
+        </div>
+      </section>
+    </main>
   );
 }
