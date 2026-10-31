@@ -1,53 +1,62 @@
-
 "use client";
 
 import { useEffect, useRef } from "react";
+import { gsap } from "../lib/gsap";
 
-export default function Reveal({ children, className = "", delay = 0 }) {
-  const elementRef = useRef(null);
+/**
+ * Scroll-triggered entrance. Same props as before, so every page that
+ * already uses <Reveal> upgrades automatically.
+ *
+ * variant="rise"  -> soft fade + short upward move (default)
+ * variant="mask"  -> wipes in from the top, good for images and panels
+ */
+export default function Reveal({
+  children,
+  className = "",
+  delay = 0,
+  variant = "rise",
+}) {
+  const ref = useRef(null);
 
   useEffect(() => {
-    const element = elementRef.current;
-
+    const element = ref.current;
     if (!element) return;
 
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
+    // Nothing animates when the visitor prefers reduced motion.
+    const mm = gsap.matchMedia();
 
-    if (reducedMotion || !("IntersectionObserver" in window)) {
-      element.classList.add("is-visible");
-      return;
-    }
+    mm.add("(prefers-reduced-motion: no-preference)", () => {
+      const trigger = {
+        trigger: element,
+        start: "top 88%",
+        once: true,
+      };
 
-    element.classList.add("nm-reveal-init");
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          element.classList.add("is-visible");
-          observer.unobserve(element);
-        }
-      },
-      {
-        threshold: 0.12,
-        rootMargin: "0px 0px -40px 0px",
+      if (variant === "mask") {
+        gsap.from(element, {
+          clipPath: "inset(0% 0% 100% 0%)",
+          duration: 1.1,
+          delay: delay / 1000,
+          ease: "power3.inOut",
+          scrollTrigger: trigger,
+        });
+      } else {
+        gsap.from(element, {
+          autoAlpha: 0,
+          y: 22,
+          duration: 0.85,
+          delay: delay / 1000,
+          ease: "power3.out",
+          scrollTrigger: trigger,
+        });
       }
-    );
+    });
 
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, []);
+    return () => mm.revert();
+  }, [delay, variant]);
 
   return (
-    <div
-      ref={elementRef}
-      className={className}
-      style={{
-        transitionDelay: `${delay}ms`,
-      }}
-    >
+    <div ref={ref} className={className}>
       {children}
     </div>
   );

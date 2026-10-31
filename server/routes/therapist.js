@@ -5,9 +5,11 @@ const {
   createTherapist,
   getTherapists,
 } = require("../controllers/therapist");
+const { updateTherapist } = require("../controllers/therapist");
 
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
+
 
 // Public read endpoint
 router.get("/allTherapists", getTherapists);
@@ -18,6 +20,13 @@ router.post(
   authMiddleware,
   roleMiddleware("admin"),
   createTherapist
+);
+
+router.patch(
+  "/updateTherapist/:id",
+  authMiddleware,
+  roleMiddleware("admin"),
+  updateTherapist
 );
 
 module.exports = router;

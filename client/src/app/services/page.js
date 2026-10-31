@@ -1,4 +1,6 @@
+
 import Link from "next/link";
+import Reveal from "../../components/Reveal";
 import { getList } from "../../lib/api";
 
 export const metadata = {
@@ -9,6 +11,42 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
+function getDuration(service) {
+  if (
+    service?.duration === null ||
+    service?.duration === undefined ||
+    service?.duration === ""
+  ) {
+    return null;
+  }
+
+  const duration = Number(service.duration);
+
+  return Number.isSafeInteger(duration) && duration > 0
+    ? duration
+    : null;
+}
+
+function getPrice(service) {
+  if (
+    service?.price === null ||
+    service?.price === undefined ||
+    service?.price === ""
+  ) {
+    return null;
+  }
+
+  const price = Number(service.price);
+
+  return Number.isFinite(price) && price >= 0 ? price : null;
+}
+
+function formatAmount(amount) {
+  return amount.toLocaleString("en-PK", {
+    maximumFractionDigits: 2,
+  });
+}
+
 export default async function Services() {
   const services = await getList("/api/services/getServices");
 
@@ -18,22 +56,23 @@ export default async function Services() {
         <div className="nm-container nm-directory-hero-grid">
           <div>
             <span className="nm-directory-eyebrow">
-              REHABILITATION <span aria-hidden="true">|</span> WELLNESS
+              Rehabilitation and wellness
             </span>
 
-            <h1>
-              Services for <em>better movement.</em>
-            </h1>
+            <h1>Services for better movement.</h1>
 
             <p>
               Explore the physiotherapy services currently listed by
-              Nexmove. Contact the clinic for details about availability
-              and appointments.
+              Nexmove. Learn more about each service and contact the
+              clinic for confirmed fees, availability and appointments.
             </p>
           </div>
 
-          <aside className="nm-directory-highlight">
-            <span>THE NEXMOVE MESSAGE</span>
+          <aside
+            className="nm-directory-highlight"
+            aria-label="The Nexmove message"
+          >
+            <span>The Nexmove message</span>
             <strong>Helping you move better.</strong>
             <p>Your next move towards a better life.</p>
           </aside>
@@ -44,7 +83,9 @@ export default async function Services() {
         <div className="nm-container">
           <div className="nm-directory-heading">
             <div>
-              <span className="nm-directory-eyebrow">OUR SERVICES</span>
+              <span className="nm-directory-eyebrow">
+                Our services
+              </span>
               <h2>Explore the list</h2>
             </div>
 
@@ -61,51 +102,87 @@ export default async function Services() {
                 There are no active services listed online at the moment.
                 Contact the clinic for current information.
               </p>
+
               <Link href="/contact" className="nm-button">
                 Contact the clinic
               </Link>
             </div>
           ) : (
             <div className="nm-directory-grid">
-              {services.map((service, index) => (
-                <article className="nm-directory-card" key={service._id}>
-                  <div className="nm-directory-card-top">
-                    <span className="nm-directory-number">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span className="nm-directory-card-mark" aria-hidden="true">
-                      N
-                    </span>
-                  </div>
+              {services.map((service, index) => {
+                const duration = getDuration(service);
+                const price = getPrice(service);
 
-                  <h3>{service.name}</h3>
+                return (
+                  <Reveal
+                    key={
+                      service._id ||
+                      `${service.name || "service"}-${index}`
+                    }
+                  >
+                    <article className="nm-directory-card">
+                      <div className="nm-directory-card-top">
+                        <span
+                          className="nm-directory-card-mark"
+                          aria-hidden="true"
+                        />
+                      </div>
 
-                  <p>
-                    {service.description?.trim() ||
-                      "Contact the clinic for further information about this service."}
-                  </p>
+                      <h3>{service.name}</h3>
 
-                  {service._id ? (
-                    <Link
-                      href={`/services/${encodeURIComponent(service._id)}`}
-                      className="nm-directory-link"
-                    >
-                      View service details
-                    </Link>
-                  ) : (
-                    <Link href="/contact" className="nm-directory-link">
-                      Ask about this service
-                    </Link>
-                  )}
-                </article>
-              ))}
+                      <p>
+                        {service.description?.trim() ||
+                          "Contact the clinic for further information about this service."}
+                      </p>
+
+                      <dl className="nm-directory-meta">
+                        <div>
+                          <dt>Duration</dt>
+                          <dd>
+                            {duration === null
+                              ? "Contact the clinic"
+                              : `${duration} minutes`}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>Fee</dt>
+                          <dd>
+                            {price === null
+                              ? "Contact the clinic"
+                              : `${formatAmount(price)} (currency not specified)`}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      {service._id ? (
+                        <Link
+                          href={`/services/${encodeURIComponent(
+                            String(service._id)
+                          )}`}
+                          className="nm-directory-link"
+                        >
+                          View service details
+                        </Link>
+                      ) : (
+                        <Link
+                          href="/contact"
+                          className="nm-directory-link"
+                        >
+                          Contact the clinic
+                        </Link>
+                      )}
+                    </article>
+                  </Reveal>
+                );
+              })}
             </div>
           )}
 
           <p className="nm-directory-disclaimer">
-            Service information is general website content. Fees and
-            session lengths have not been confirmed for publication.
-            Contact Nexmove for current details.
+            Fees, session lengths and appointment availability are
+            displayed only where confirmed information is available.
+            Contact Nexmove for details that have not been published.
           </p>
         </div>
       </section>

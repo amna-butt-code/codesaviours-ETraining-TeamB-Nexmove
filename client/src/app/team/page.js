@@ -104,10 +104,12 @@ export default async function Team() {
 
                     <h3>{therapist.name}</h3>
 
-                    <p>
-                      Professional profile details will be added after
-                      confirmation by the clinic.
-                    </p>
+{typeof therapist.displayTiming === "string" &&
+  therapist.displayTiming.trim() && (
+    <p className="mt-2 text-sm text-gray-600">
+      Clinic timing: {therapist.displayTiming}
+    </p>
+  )}
 
                     {therapist._id && (
                       <Link
@@ -122,11 +124,6 @@ export default async function Team() {
               ))}
             </div>
           )}
-
-          <p className="nm-directory-disclaimer">
-            Photos, qualifications and professional details are not
-            displayed until confirmed by the clinic.
-          </p>
         </div>
       </section>
     </main>

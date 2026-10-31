@@ -1,8 +1,8 @@
-
-import Image from "next/image";
 import Link from "next/link";
 import { getList } from "../lib/api";
 import Reveal from "../components/Reveal";
+import HeroStage from "../components/HeroStage";
+import HeroVisual from "../components/HeroVisual";
 
 export const dynamic = "force-dynamic";
 
@@ -22,26 +22,6 @@ function ArrowIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-    </svg>
-  );
-}
-
-function LocationIcon() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 17 17"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M8.5 15C8.5 15 14 9.8 14 6.5A5.5 5.5 0 1 0 3 6.5C3 9.8 8.5 15 8.5 15Z"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinejoin="round"
-      />
-      <circle cx="8.5" cy="6.5" r="1.7" stroke="currentColor" strokeWidth="1.3" />
     </svg>
   );
 }
@@ -80,79 +60,60 @@ export default async function Home() {
 
   return (
     <div className="nm-home">
-      <section className="nm-hero">
+      <HeroStage className="nm-hero">
         <div className="nm-container nm-hero-grid">
           <div className="nm-hero-copy">
-            <Reveal>
-              <div className="nm-hero-kicker">
-                
-                Nexmove Physiotherapy Clinic | Faisalabad
-              </div>
+            <p className="nm-hero-kicker" data-fade>
+              
+              Nexmove Physiotherapy Clinic, Faisalabad
+            </p>
 
-              <h1 className="nm-hero-title">
-                Make room for{" "}
-                <em>better movement.</em>
-              </h1>
+            <h1 className="nm-hero-title">
+              <span className="nm-line">
+                <span data-line>Your next move</span>
+              </span>
+              <span className="nm-line">
+                <span data-line>starts here.</span>
+              </span>
+            </h1>
 
-              <p className="nm-hero-description">
-                Movement is part of everyday life.
-                Explore Nexmove&apos;s physiotherapy services,
-                learn about conditions we treat, and find
-                a clear starting point for your next step.
-              </p>
+            <p className="nm-hero-description" data-fade>
+              Explore Nexmove&apos;s physiotherapy services, learn about the
+              conditions we treat, and find a clear starting point for your
+              next step.
+            </p>
 
-              <div className="nm-hero-actions">
-                <Link href="/book" className="nm-button">
-                  Book an appointment
-                  <span className="nm-arrow">
-                    <ArrowIcon />
-                  </span>
-                </Link>
-
-                <Link
-                  href="/services"
-                  className="nm-button nm-button--outline"
-                >
-                  Explore services
-                </Link>
-              </div>
-
-              <div className="nm-hero-location">
-                <LocationIcon />
-                <span>
-                  <strong>Location:</strong> Daewoo Road, Faisalabad
+            <div className="nm-hero-actions" data-fade>
+              <Link href="/book" className="nm-button">
+                Book an appointment
+                <span className="nm-arrow">
+                  <ArrowIcon />
                 </span>
-              </div>
-            </Reveal>
-          </div>
+              </Link>
 
-          <Reveal className="nm-hero-visual" delay={140}>
-            <div className="nm-hero-image-frame">
-              <Image
-                src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=85"
-                alt="Healthcare professional in a bright clinical setting"
-                width={1200}
-                height={1450}
-                priority
-                unoptimized
-                className="nm-hero-photo"
-              />
-
-              <div className="nm-image-shade" />
-
-              <div className="nm-hero-image-label">
-                <span>Nexmove | Physiotherapy</span>
-                <strong>Movement, supported with care.</strong>
-              </div>
+              <Link href="/services" className="nm-button nm-button--outline">
+                Explore services
+              </Link>
             </div>
 
-            <div className="nm-floating-note">
+            <div className="nm-hero-contact" data-fade>
+              <span>Daewoo Road, Faisalabad</span>
+              <a href="tel:+923266312211">Call 0326 6312211</a>
+            </div>
+          </div>
+
+          <div className="nm-hero-visual" data-parallax>
+            <div className="nm-spine-panel" data-panel>
+              <HeroVisual />
+            </div>
+
+            <div className="nm-hero-note" data-fade>
               <span>Your next step</span>
               <strong>Start with an appointment request.</strong>
             </div>
-          </Reveal>
+          </div>
         </div>
-      </section>
+      </HeroStage>
 
       <section className="nm-intro-strip" aria-label="Website information">
         <div className="nm-container nm-intro-strip-inner">
@@ -216,7 +177,7 @@ export default async function Home() {
             </div>
           ) : (
             <div className="nm-service-list">
-              {featuredServices.map((service, index) => (
+              {featuredServices.map((service) => (
                 <Reveal key={service._id || service.name}>
                   <Link
                     href={
@@ -226,10 +187,6 @@ export default async function Home() {
                     }
                     className="nm-service-row"
                   >
-                    <span className="nm-service-number">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-
                     <h3 className="nm-service-name">
                       {service.name}
                     </h3>
