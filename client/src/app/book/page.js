@@ -67,29 +67,35 @@ function extractSlots(json) {
   return candidates.find(Array.isArray) || [];
 }
 
-function isServiceBookable(service) {
-  const hasDuration =
+function hasValidServiceDuration(service) {
+  return (
     service?.duration !== null &&
     service?.duration !== undefined &&
-    service?.duration !== "";
+    service?.duration !== "" &&
+    Number.isSafeInteger(Number(service.duration)) &&
+    Number(service.duration) > 0
+  );
+}
 
-  const hasPrice =
-    service?.price !== null &&
-    service?.price !== undefined &&
-    service?.price !== "";
-
-  const duration = Number(service?.duration);
-  const price = Number(service?.price);
-
+function isServiceBookable(service) {
   return (
     service?.bookingEnabled === true &&
-    hasDuration &&
-    hasPrice &&
-    Number.isFinite(duration) &&
-    duration > 0 &&
-    Number.isFinite(price) &&
-    price >= 0
+    hasValidServiceDuration(service)
   );
+}
+
+function getServicePrice(service) {
+  if (
+    service?.price === null ||
+    service?.price === undefined ||
+    service?.price === ""
+  ) {
+    return null;
+  }
+
+  const price = Number(service.price);
+
+  return Number.isFinite(price) && price >= 0 ? price : null;
 }
 
 function getSlotTime(slot) {
@@ -241,9 +247,7 @@ export default function Book() {
             )}. Please refresh the page or contact the clinic.`
           );
         } else if (!activeServices.length) {
-          setListError(
-            "No active services are currently available."
-          );
+          setListError("No active services are currently available.");
         } else if (!activeTherapists.length) {
           setListError(
             "No active therapist profiles are currently available."
@@ -282,7 +286,7 @@ export default function Book() {
 
     if (!service || !isServiceBookable(service)) {
       setSubmitError(
-        "This service is not currently configured for online booking."
+        "A confirmed session duration is required before this service can be booked online. Please contact the clinic."
       );
       return;
     }
@@ -339,7 +343,7 @@ export default function Book() {
 
     if (!isServiceBookable(selectedService)) {
       setSlotError(
-        "This service is not currently configured for online booking."
+        "A confirmed session duration is required before checking appointment slots."
       );
       return;
     }
@@ -505,9 +509,7 @@ export default function Book() {
     }
 
     // Interpret the selected clinic time using Pakistan's UTC+05:00 offset.
-    const dateTime = new Date(
-      `${form.date}T${startTime}:00+05:00`
-    );
+    const dateTime = new Date(`${form.date}T${startTime}:00+05:00`);
 
     if (Number.isNaN(dateTime.getTime())) {
       return null;
@@ -527,7 +529,7 @@ export default function Book() {
 
     if (!isServiceBookable(selectedService)) {
       setSubmitError(
-        "This service is not currently configured for online booking."
+        "A confirmed session duration is required before this service can be booked online."
       );
       return;
     }
@@ -702,9 +704,7 @@ export default function Book() {
             </Link>
           </div>
         ) : loadingLists ? (
-          <p role="status">
-            Loading services and therapists…
-          </p>
+          <p role="status">Loading services and therapists…</p>
         ) : (
           <>
             {listError && (
@@ -730,7 +730,8 @@ export default function Book() {
                   <>
                     {bookableServices.length === 0 && (
                       <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-                        Online booking is not currently configured for these
+                        Online booking is unavailable because confirmed
+                        session durations have not been provided for these
                         services. Please contact the clinic for appointment
                         information.
                       </p>
@@ -739,6 +740,7 @@ export default function Book() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       {services.map((service) => {
                         const bookable = isServiceBookable(service);
+                        const price = getServicePrice(service);
 
                         return (
                           <button
@@ -762,14 +764,22 @@ export default function Book() {
                               </span>
                             )}
 
+                            <span className="mt-2 block text-sm text-gray-600">
+                              Fee:{" "}
+                              {price === null
+                                ? "Please contact the clinic"
+                                : `${price.toLocaleString("en-PK")} (currency not specified)`}
+                            </span>
+
                             {bookable ? (
-                              <span className="mt-2 block text-sm text-gray-600">
+                              <span className="mt-1 block text-sm text-gray-600">
                                 Duration: {Number(service.duration)} minutes
                               </span>
                             ) : (
                               <span className="mt-2 block text-sm text-amber-800">
-                                Online booking is not currently configured
-                                for this service.
+                                Session duration has not been confirmed.
+                                Please contact the clinic to arrange an
+                                appointment.
                               </span>
                             )}
                           </button>
@@ -901,9 +911,7 @@ export default function Book() {
                 </p>
 
                 {slotsLoading ? (
-                  <p role="status">
-                    Checking availability…
-                  </p>
+                  <p role="status">Checking availability…</p>
                 ) : slots.length > 0 ? (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {slots.map((slot) => (
@@ -928,8 +936,7 @@ export default function Book() {
                   </div>
                 ) : (
                   <p>
-                    {slotError ||
-                      "No available slots were returned."}
+                    {slotError || "No available slots were returned."}
                   </p>
                 )}
 
@@ -953,10 +960,7 @@ export default function Book() {
             )}
 
             {step === 4 && (
-              <form
-                onSubmit={submitBooking}
-                className="space-y-5"
-              >
+              <form onSubmit={submitBooking} className="space-y-5">
                 <div className="rounded-xl bg-[var(--color-light)] p-4">
                   <h2 className="text-xl font-bold">
                     Review your appointment
@@ -966,13 +970,18 @@ export default function Book() {
                     Service: {selectedService?.name || "—"}
                   </p>
 
-                  <p>
-                    Therapist: {selectedTherapistLabel}
-                  </p>
+                  <p>Therapist: {selectedTherapistLabel}</p>
 
                   <p>
                     Date and time: {form.date} at{" "}
                     {form.slot?.startTime || "—"}
+                  </p>
+
+                  <p>
+                    Fee:{" "}
+                    {getServicePrice(selectedService) === null
+                      ? "Please confirm with the clinic"
+                      : `${getServicePrice(selectedService).toLocaleString("en-PK")} (currency not specified)`}
                   </p>
                 </div>
 
