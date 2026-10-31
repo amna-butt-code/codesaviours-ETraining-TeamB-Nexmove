@@ -6,7 +6,31 @@ const appointmentSchema = new mongoose.Schema(
     patient: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Patient",
-      required: true
+      required: false
+    },
+    guestName: {
+      type: String,
+      trim: true,
+      maxlength: [100, "Guest name must be 100 characters or fewer"]
+    },
+    guestPhone: {
+      type: String,
+      trim: true,
+      maxlength: [20, "Guest phone must be 20 characters or fewer"]
+    },
+    guestEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      maxlength: [254, "Guest email must be 254 characters or fewer"]
+    },
+    consentGiven: {
+      type: Boolean,
+      required: true,
+      validate: {
+        validator: (value) => value === true,
+        message: "Consent must be given to book an appointment."
+      }
     },
     therapist: {
       type: mongoose.Schema.Types.ObjectId,
@@ -22,12 +46,16 @@ const appointmentSchema = new mongoose.Schema(
       type: Date,
       required: true
     },
-     appointmentEnd: {
+    appointmentEnd: {
       type: Date,
       required: true,
       validate: {
         validator: function (value) {
-          return value > this.appointmentDate;
+          return (
+            this.appointmentDate instanceof Date &&
+            !Number.isNaN(this.appointmentDate.getTime()) &&
+            value > this.appointmentDate
+          );
         },
         message: "Appointment end time must be after start time."
       }
@@ -38,17 +66,29 @@ const appointmentSchema = new mongoose.Schema(
         "pending",
         "confirmed",
         "completed",
-        "cancelled"
+        "cancelled",
+        "no-show"
       ],
       default: "pending"
     },
-     notes: {
+    notes: {
       type: String,
       trim: true,
-      default: ""
+      default: "",
+      maxlength: [500, "Notes must be 500 characters or fewer"]
     }
   },
   { timestamps: true }
+);
+
+appointmentSchema.index(
+  { therapist: 1, appointmentDate: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ["pending", "confirmed"] }
+    }
+  }
 );
 
 module.exports = mongoose.model("Appointment", appointmentSchema);

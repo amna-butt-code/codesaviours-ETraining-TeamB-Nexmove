@@ -6,7 +6,9 @@ const StatusCode = {
     ALREADY_EXIST: 409,
     INVALID_DATA: 400,
     BAD_REQUEST: 400,
-    UNAUTHORIZED: 401
+    UNAUTHORIZED: 401,
+    CONFLICT: 409,
+    FORBIDDEN: 403
 };
  
 module.exports = {StatusCode};

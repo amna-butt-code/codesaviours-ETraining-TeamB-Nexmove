@@ -14,6 +14,14 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    passwordResetTokenHash: {
+    type: String,
+    select: false
+    },
+    passwordResetExpires: {
+    type: Date,
+    select: false
+    },
     role:{
         type: String,
         enum: ['patient', 'therapist','admin'],
@@ -22,5 +30,5 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true
 });
 
-
-module.exports = mongoose.model('User', userSchema);
+module.exports =
+  mongoose.models.User || mongoose.model("User", userSchema);

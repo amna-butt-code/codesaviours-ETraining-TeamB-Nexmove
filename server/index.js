@@ -1,18 +1,29 @@
+﻿const reviewRoutes = require("./routes/reviewRoutes");
+
 require("dotenv").config({
-  path: "../.env.example",
+  path: require("path").join(__dirname, ".env.example"),
 });
+
+const express = require("express");
+const cors = require("cors");
 const connectDB = require("./db");
+
 const serviceRoutes = require("./routes/serviceRoutes");
 const authRoutes = require("./routes/auth");
 const holidayRoutes = require("./routes/holiday");
 const therapistRoutes = require("./routes/therapist");
 const appointmentRoutes = require("./routes/appointments");
-
-
-const express = require("express");
-const cors = require("cors");
+const chatRoutes = require("./routes/chat");
+const faqRoutes = require("./routes/faqRoutes");
+const conditionRoutes = require("./routes/conditionRoutes");
+const messageRoutes = require("./routes/messageRoutes");
+const postRoutes = require("./routes/postRoutes");
+const packageRoutes = require("./routes/packageRoutes");
+const assistantRoutes = require("./routes/assistantRoutes");
 
 const app = express();
+const PORT = process.env.PORT || 5000;
+
 app.use(cors());
 app.use(express.json());
 
@@ -20,19 +31,35 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", project: "Nexmove" });
 });
 
-
+// Backend foundation routes
 app.use("/api/services", serviceRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/chat", chatRoutes);
 app.use("/api/holidays", holidayRoutes);
 app.use("/api/therapists", therapistRoutes);
 app.use("/api/appointments", appointmentRoutes);
+app.use("/api/assistant", assistantRoutes);
 
+// Existing main-branch routes
+app.use("/api/faqs", faqRoutes);
+app.use("/api/conditions", conditionRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/posts", postRoutes);
+app.use("/api/packages", packageRoutes);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+async function startServer() {
+  try {
+    await connectDB();
 
-connectDB();
+    app.use("/api/reviews", reviewRoutes);
+app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to connect to the database:", error.message);
+    process.exit(1);
+  }
+}
 
-
-
+startServer();
 

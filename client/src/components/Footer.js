@@ -17,7 +17,7 @@ export default function Footer() {
           <h3 className="text-2xl font-bold mb-3">Nexmove</h3>
           <p className="text-gray-200">
             Nexmove Physiotherapy Clinic helps you move better and recover
-            faster. [Short about text from client]
+            faster. Rehabilitation and wellness. Your next move starts here
           </p>
         </div>
 
@@ -35,14 +35,17 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4 className="font-semibold mb-3">Visit Us</h4>
-          <p className="text-gray-200">[Clinic address]</p>
-          <p className="text-gray-200 mt-2">Phone: [Clinic phone]</p>
-          <p className="text-gray-200">Timings: [Clinic timings]</p>
-          <a href="#" className="text-gray-200 underline mt-2 inline-block">
-            [Google Maps link]
-          </a>
-          <p className="text-gray-200 mt-3">Social: [Facebook] [Instagram] [LinkedIn]</p>
+<h4 className="font-semibold mb-3">Visit Us</h4>
+<p className="text-gray-200">Riyaz Ul Jannah Colony, Daewoo Road, Faisalabad</p>
+<p className="text-gray-200 mt-2">Phone: 0326 6312211</p>
+<p className="text-gray-200">Men: 9 AM to 1 PM</p>
+<p className="text-gray-200">Women and children: 1 PM to 10 PM</p>
+<a href="https://share.google/i4m42aMPoyZVJKvn3" target="_blank" rel="noopener noreferrer" className="text-gray-200 underline mt-2 inline-block">
+  View on Google Maps
+</a>
+<p className="text-gray-200 mt-3">
+  <a href="https://www.instagram.com/nexmove_/" target="_blank" rel="noopener noreferrer" className="underline">Instagram</a>
+</p>
         </div>
       </div>
 
