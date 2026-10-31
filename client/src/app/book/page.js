@@ -606,7 +606,9 @@ export default function Book() {
     setSubmitting(true);
 
     try {
-      const response = await fetch("/api/appointments/book", {
+const bookingEndpoint = "/api/appointments/book";
+
+      const response = await fetch(bookingEndpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
