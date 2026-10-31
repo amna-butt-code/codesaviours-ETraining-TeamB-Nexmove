@@ -7,6 +7,7 @@ const {
   getServices,
   getServiceById,
   updateService,
+  deleteService,
 } = require("../controllers/serviceRoutes");
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -16,7 +17,7 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 router.get("/getServices", getServices);
 router.get("/getService/:id", getServiceById);
 
-// Admin-only write endpoints
+// Admin-only create endpoint
 router.post(
   "/newService",
   authMiddleware,
@@ -24,11 +25,28 @@ router.post(
   createService
 );
 
+// Admin-only partial update endpoint
 router.patch(
   "/updateService/:id",
   authMiddleware,
   roleMiddleware("admin"),
   updateService
+);
+
+// Admin-only CRUD update endpoint
+router.put(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("admin"),
+  updateService
+);
+
+// Admin-only soft-delete endpoint
+router.delete(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("admin"),
+  deleteService
 );
 
 module.exports = router;
