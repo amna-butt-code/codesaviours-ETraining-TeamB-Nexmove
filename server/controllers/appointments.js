@@ -23,68 +23,97 @@ const LOCK_DURATION_MS = 5 * 60 * 1000;
 /*                                  Helpers                                   */
 /* -------------------------------------------------------------------------- */
 
+
+const TIME_ZONE_OFFSET = "+05:00";
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 function timeToMinutes(time) {
-  const [hours, minutes] = String(time).split(":").map(Number);
-  return hours * 60 + minutes;
+    if (typeof time !== "string" || !TIME_PATTERN.test(time)) {
+        return NaN;
+    }
+
+    const [hours, minutes] = time.split(":").map(Number);
+    return hours * 60 + minutes;
 }
 
 function buildDateTime(date, time) {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hours, minutes] = time.split(":").map(Number);
+    if (
+        !isValidDateString(date) ||
+        typeof time !== "string" ||
+        !TIME_PATTERN.test(time)
+    ) {
+        return new Date(NaN);
+    }
 
-  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+    return new Date(
+        `${date}T${time}:00${TIME_ZONE_OFFSET}`
+    );
 }
 
 function getLocalDateString(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+    const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: CLINIC_TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).formatToParts(date);
 
-  return `${year}-${month}-${day}`;
+    const values = Object.fromEntries(
+        parts.map((part) => [part.type, part.value])
+    );
+
+    return `${values.year}-${values.month}-${values.day}`;
 }
 
 function getDateKey(date) {
-  return getLocalDateString(date);
+    return getLocalDateString(date);
 }
 
 function isValidDateString(date) {
-  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return false;
-  }
+    if (
+        typeof date !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(date)
+    ) {
+        return false;
+    }
 
-  const [year, month, day] = date.split("-").map(Number);
-  const parsed = new Date(year, month - 1, day);
+    const [year, month, day] = date.split("-").map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
 
-  return (
-    parsed.getFullYear() === year &&
-    parsed.getMonth() === month - 1 &&
-    parsed.getDate() === day
-  );
+    return (
+        parsed.getUTCFullYear() === year &&
+        parsed.getUTCMonth() === month - 1 &&
+        parsed.getUTCDate() === day
+    );
 }
 
 function formatTime(date) {
-  return `${String(date.getHours()).padStart(2, "0")}:${String(
-    date.getMinutes()
-  ).padStart(2, "0")}`;
+    return new Intl.DateTimeFormat("en-GB", {
+        timeZone: CLINIC_TIME_ZONE,
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+    }).format(date);
 }
 
 function formatEmailDate(date) {
-  return date.toLocaleDateString("en-GB", {
-    timeZone: CLINIC_TIME_ZONE,
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+    return date.toLocaleDateString("en-GB", {
+        timeZone: CLINIC_TIME_ZONE,
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    });
 }
 
 function formatEmailTime(date) {
-  return date.toLocaleTimeString("en-GB", {
-    timeZone: CLINIC_TIME_ZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+    return date.toLocaleTimeString("en-GB", {
+        timeZone: CLINIC_TIME_ZONE,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    });
 }
+
 
 /* -------------------------------------------------------------------------- */
 /*                              Email Confirmation                            */
@@ -288,7 +317,7 @@ if (
   const date = getLocalDateString(start);
   const startTime = formatTime(start);
   const end = new Date(start.getTime() + duration * 60 * 1000);
-  const dayOfWeek = start.getDay();
+  const dayOfWeek = buildDateTime(date, "12:00").getUTCDay();
 
   const matchingShifts = (therapist.availability || []).filter(
     (shift) =>
@@ -296,7 +325,7 @@ if (
       timeToMinutes(shift.startTime) <= timeToMinutes(startTime) &&
       timeToMinutes(shift.endTime) >=
         timeToMinutes(startTime) + duration &&
-      start.toDateString() === end.toDateString()
+      getLocalDateString(start) === getLocalDateString(end)
   );
 
   if (!matchingShifts.length) {
@@ -377,7 +406,7 @@ const getAvailableSlots = async (req, res) => {
       );
     }
 
-    const requestedDay = buildDateTime(date, "12:00").getDay();
+    const requestedDay = buildDateTime(date, "12:00").getUTCDay();
 
     const [therapist, service] = await Promise.all([
       Therapist.findById(therapistId),
@@ -399,6 +428,20 @@ const getAvailableSlots = async (req, res) => {
         "Active service not found."
       );
     }
+
+    if (
+    !Number.isSafeInteger(service.duration) ||
+    service.duration < 1 ||
+    typeof service.price !== "number" ||
+    !Number.isFinite(service.price) ||
+    service.price < 0
+) {
+    return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "This service is not configured for online booking yet. Please contact the clinic."
+    );
+}
 
     const schedule = (therapist.availability || []).filter(
       (shift) => shift.dayOfWeek === requestedDay
