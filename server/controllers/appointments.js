@@ -236,8 +236,8 @@ async function acquireAppointmentLock(therapistId, dateKey) {
         },
       },
       {
-        new: true,
-        upsert: true,
+          returnDocument: "after",
+          upsert: true,
       }
     );
 
@@ -361,6 +361,7 @@ if (
     therapist._id,
     start,
     end,
+    null,
     excludeAppointmentId
   );
 
