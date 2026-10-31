@@ -2,7 +2,7 @@
 
 // Load server/.env before importing modules that may use environment variables.
 const envResult = require("dotenv").config({
-  path: path.join(__dirname, ".env"),
+  path: path.join(__dirname, ".env.example"),
 });
 
 if (envResult.error) {
@@ -27,6 +27,7 @@ const messageRoutes = require("./routes/messageRoutes");
 const postRoutes = require("./routes/postRoutes");
 const packageRoutes = require("./routes/packageRoutes");
 const assistantRoutes = require("./routes/assistantRoutes");
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;

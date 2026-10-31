@@ -133,9 +133,10 @@ async function findOverlappingAppointments(
   therapistId,
   start,
   end,
-  session = null
+  session = null,
+  excludeAppointmentId = null
 ) {
-  const query = Appointment.find({
+  const filter = {
     therapist: therapistId,
     status: { $in: ACTIVE_APPOINTMENT_STATUSES },
     appointmentDate: { $lt: end },
@@ -143,10 +144,16 @@ async function findOverlappingAppointments(
       { appointmentEnd: { $gt: start } },
       {
         appointmentEnd: { $exists: false },
-        appointmentDate: { $gte: start }
-      }
-    ]
-  });
+        appointmentDate: { $gte: start },
+      },
+    ],
+  };
+
+  if (excludeAppointmentId) {
+    filter._id = { $ne: excludeAppointmentId };
+  }
+
+  const query = Appointment.find(filter);
 
   if (session) {
     query.session(session);
@@ -154,13 +161,16 @@ async function findOverlappingAppointments(
 
   return query;
 }
-
-async function getActiveAppointmentsForDay(therapistId, date) {
+async function getActiveAppointmentsForDay(
+  therapistId,
+  date,
+  excludeAppointmentId = null
+) {
   const dayStart = buildDateTime(date, "00:00");
   const nextDay = new Date(dayStart);
   nextDay.setDate(nextDay.getDate() + 1);
 
-  return Appointment.find({
+  const filter = {
     therapist: therapistId,
     status: { $in: ACTIVE_APPOINTMENT_STATUSES },
     appointmentDate: { $lt: nextDay },
@@ -171,7 +181,13 @@ async function getActiveAppointmentsForDay(therapistId, date) {
         appointmentDate: { $gte: dayStart },
       },
     ],
-  });
+  };
+
+  if (excludeAppointmentId) {
+    filter._id = { $ne: excludeAppointmentId };
+  }
+
+  return Appointment.find(filter);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -252,7 +268,7 @@ async function releaseAppointmentLock(therapistId, dateKey, lockToken) {
 /*                         Selected Slot Validation                          */
 /* -------------------------------------------------------------------------- */
 
-async function validateSelectedSlot({ therapist, service, start }) {
+async function validateSelectedSlot({ therapist, service, start, excludeAppointmentId = null })  {
   if (!mongoose.isValidObjectId(therapist._id)) {
     return { error: "Invalid therapist." };
   }
@@ -314,7 +330,8 @@ if (
 
   const appointments = await getActiveAppointmentsForDay(
     therapist._id,
-    date
+    date,
+    excludeAppointmentId
   );
 
   const bookedSlots = appointments.map((item) =>
@@ -343,7 +360,8 @@ if (
   const overlaps = await findOverlappingAppointments(
     therapist._id,
     start,
-    end
+    end,
+    excludeAppointmentId
   );
 
   if (overlaps.length > 0) {
@@ -422,7 +440,7 @@ const getAvailableSlots = async (req, res) => {
 
     const appointments = await getActiveAppointmentsForDay(
       therapist._id,
-      date
+      date,
     );
 
     const bookedSlots = appointments.map((item) =>
@@ -888,8 +906,385 @@ if (
   }
 };
 
-module.exports = {
-  getAvailableSlots,
-  bookAppointment,
-  bookGuestAppointment
+
+const cancelAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { guestEmail, guestPhone } = req.body || {};
+
+    if (!mongoose.isValidObjectId(id)) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Invalid appointment ID."
+      );
+    }
+
+    const appointment = await Appointment.findById(id);
+
+    if (!appointment) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Appointment not found."
+      );
+    }
+
+    // Admins can cancel any appointment.
+    if (req.user?.role !== "admin") {
+      if (appointment.patient) {
+        // Registered patient ownership check.
+        const userId = req.user?._id || req.user?.id;
+
+        if (!userId) {
+          return responseHandler(
+            res,
+            StatusCode.UNAUTHORIZED,
+            "Please log in to cancel this appointment."
+          );
+        }
+
+        const patient = await Patient.findOne({ user: userId });
+
+        if (
+          !patient ||
+          appointment.patient.toString() !== patient._id.toString()
+        ) {
+          return responseHandler(
+            res,
+            StatusCode.NOT_FOUND,
+            "Appointment not found."
+          );
+        }
+      } else {
+        // Temporary guest ownership check.
+        const email = String(guestEmail || "").trim().toLowerCase();
+        const phone = String(guestPhone || "").trim();
+
+        if (
+          !email ||
+          !phone ||
+          email !== appointment.guestEmail ||
+          phone !== appointment.guestPhone
+        ) {
+          return responseHandler(
+            res,
+            StatusCode.NOT_FOUND,
+            "Appointment not found."
+          );
+        }
+      }
+    }
+
+    if (!ACTIVE_APPOINTMENT_STATUSES.includes(appointment.status)) {
+      return responseHandler(
+        res,
+        StatusCode.CONFLICT,
+        "This appointment cannot be cancelled in its current status."
+      );
+    }
+
+    appointment.status = "cancelled";
+    await appointment.save();
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Appointment cancelled successfully.",
+      appointment
+    );
+  } catch (error) {
+    console.error("Cancel appointment error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Failed to cancel appointment."
+    );
+  }
 };
+
+const rescheduleAppointment = async (req, res) => {
+  let lockToken = null;
+  let lockTherapistId = null;
+  let lockDateKey = null;
+
+  try {
+    const { id } = req.params;
+    const { appointmentDate, guestEmail, guestPhone } = req.body || {};
+
+    if (!mongoose.isValidObjectId(id)) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Invalid appointment ID."
+      );
+    }
+
+    if (!appointmentDate) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Please provide a new appointment date and time."
+      );
+    }
+
+    const start = new Date(appointmentDate);
+
+    if (
+      Number.isNaN(start.getTime()) ||
+      start <= new Date() ||
+      start.getSeconds() !== 0 ||
+      start.getMilliseconds() !== 0
+    ) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Please provide a valid future appointment time."
+      );
+    }
+
+    const appointment = await Appointment.findById(id);
+
+    if (!appointment) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Appointment not found."
+      );
+    }
+
+    // Admins can reschedule any appointment.
+    if (req.user?.role !== "admin") {
+      if (appointment.patient) {
+        // Registered patient ownership check.
+        const userId = req.user?._id || req.user?.id;
+
+        if (!userId) {
+          return responseHandler(
+            res,
+            StatusCode.UNAUTHORIZED,
+            "Please log in to reschedule this appointment."
+          );
+        }
+
+        const patient = await Patient.findOne({ user: userId });
+
+        if (
+          !patient ||
+          appointment.patient.toString() !== patient._id.toString()
+        ) {
+          return responseHandler(
+            res,
+            StatusCode.NOT_FOUND,
+            "Appointment not found."
+          );
+        }
+      } else {
+        // Temporary guest ownership check.
+        const email = String(guestEmail || "").trim().toLowerCase();
+        const phone = String(guestPhone || "").trim();
+
+        if (
+          !email ||
+          !phone ||
+          email !== appointment.guestEmail ||
+          phone !== appointment.guestPhone
+        ) {
+          return responseHandler(
+            res,
+            StatusCode.NOT_FOUND,
+            "Appointment not found."
+          );
+        }
+      }
+    }
+
+    if (!ACTIVE_APPOINTMENT_STATUSES.includes(appointment.status)) {
+      return responseHandler(
+        res,
+        StatusCode.CONFLICT,
+        "This appointment cannot be rescheduled in its current status."
+      );
+    }
+
+    const [therapist, service] = await Promise.all([
+      Therapist.findById(appointment.therapist),
+      Service.findOne({
+        _id: appointment.service,
+        isActive: true,
+      }),
+    ]);
+
+    if (!therapist || therapist.inactive) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Therapist not found or inactive."
+      );
+    }
+
+    if (!service) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "The original appointment service is no longer available."
+      );
+    }
+
+    // Lock the new appointment date before checking availability.
+    lockTherapistId = therapist._id;
+    lockDateKey = getDateKey(start);
+
+    lockToken = await acquireAppointmentLock(
+      lockTherapistId,
+      lockDateKey
+    );
+
+    if (!lockToken) {
+      return responseHandler(
+        res,
+        StatusCode.CONFLICT,
+        "Another booking is being processed for this therapist. Please try again."
+      );
+    }
+
+    // Exclude this appointment from the availability check.
+    const slotResult = await validateSelectedSlot({
+      therapist,
+      service,
+      start,
+      excludeAppointmentId: appointment._id,
+    });
+
+    if (slotResult.error) {
+      return responseHandler(
+        res,
+        slotResult.conflict
+          ? StatusCode.CONFLICT
+          : StatusCode.BAD_REQUEST,
+        slotResult.error
+      );
+    }
+
+    appointment.appointmentDate = start;
+    appointment.appointmentEnd = slotResult.end;
+
+    await appointment.save();
+
+    // Send an updated confirmation email without undoing the reschedule
+    // if email delivery fails.
+    const userId = req.user?._id || req.user?.id;
+    const user = appointment.patient && userId
+      ? await User.findById(userId).select("name email")
+      : null;
+
+    await sendConfirmationSafely({
+      recipient: appointment.guestEmail || user?.email,
+      patientName: appointment.guestName || user?.name,
+      service,
+      therapist,
+      appointment,
+    });
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Appointment rescheduled successfully.",
+      appointment
+    );
+  } catch (error) {
+    if (error.code === 11000) {
+      return responseHandler(
+        res,
+        StatusCode.CONFLICT,
+        "This time slot is already booked."
+      );
+    }
+
+    console.error("Reschedule appointment error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Failed to reschedule appointment."
+    );
+  } finally {
+    if (lockToken && lockTherapistId && lockDateKey) {
+      try {
+        await releaseAppointmentLock(
+          lockTherapistId,
+          lockDateKey,
+          lockToken
+        );
+      } catch (releaseError) {
+        console.error(
+          "Failed to release appointment lock:",
+          releaseError
+        );
+      }
+    }
+  }
+};
+
+const updateAppointmentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body || {};
+
+    if (!mongoose.isValidObjectId(id)) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Invalid appointment ID."
+      );
+    }
+
+    const allowedStatuses = [
+      "pending",
+      "confirmed",
+      "completed",
+      "cancelled",
+      "no-show",
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Invalid appointment status."
+      );
+    }
+
+    const appointment = await Appointment.findById(id);
+
+    if (!appointment) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Appointment not found."
+      );
+    }
+
+    appointment.status = status;
+    await appointment.save();
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Appointment status updated successfully.",
+      appointment
+    );
+  } catch (error) {
+    console.error("Update appointment status error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Failed to update appointment status."
+    );
+  }
+};
+
+
+module.exports = {getAvailableSlots,bookAppointment,bookGuestAppointment,cancelAppointment, rescheduleAppointment, updateAppointmentStatus};

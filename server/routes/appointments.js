@@ -14,8 +14,24 @@ const {bookAppointment,getAvailableSlots,bookGuestAppointment,cancelAppointment,
 router.post("/book",authMiddleware,validateAppointmentBooking,bookingRateLimiter,bookAppointment);
 router.post("/bookGuest",validateGuestAppointmentBooking,bookingRateLimiter,bookGuestAppointment);
 router.get("/getAvailableSlots",bookingRateLimiter,getAvailableSlots);
-router.patch("/:id/cancel", authMiddleware, bookingRateLimiter, cancelAppointment);
-router.patch("/:id/reschedule", authMiddleware,bookingRateLimiter,rescheduleAppointment);
+router.patch("/:id/cancel", bookingRateLimiter, (req, res, next) => {
+  if (req.headers.authorization) {
+    return authMiddleware(req, res, next);
+  }
+  next();
+}, cancelAppointment);
+router.patch(
+  "/:id/reschedule",
+  bookingRateLimiter,
+  (req, res, next) => {
+    if (!req.headers.authorization) {
+      return next();
+    }
+
+    return authMiddleware(req, res, next);
+  },
+  rescheduleAppointment
+);
 router.patch("/:id/status",authMiddleware,roleMiddleware("admin"),bookingRateLimiter,updateAppointmentStatus);
 
 module.exports = router;
