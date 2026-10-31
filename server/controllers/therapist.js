@@ -4,42 +4,74 @@ const Therapist = require("../models/therapist");
 const { StatusCode } = require("../consts/statusCode");
 const responseHandler = require("../utils/responseHandler");
 
+function isStringArray(value) {
+    return (
+        Array.isArray(value) &&
+        value.every(
+            (item) =>
+                typeof item === "string" &&
+                item.trim().length > 0
+        )
+    );
+}
+
 const createTherapist = async (req, res) => {
     try {
+        const body = req.body || {};
+
         const {
             user,
             name,
-            qualification,
+            qualification = [],
             specialties = [],
             availability = [],
-            profileImage = ""
-        } = req.body;
+            profileImage = "",
+        } = body;
 
         if (
             typeof name !== "string" ||
             !name.trim() ||
-            !Array.isArray(qualification) ||
-            qualification.length === 0
+            !Array.isArray(qualification)
         ) {
             return responseHandler(
                 res,
                 StatusCode.BAD_REQUEST,
-                "Name and at least one qualification are required."
+                "A valid name and qualification array are required."
             );
         }
 
         if (
-            !Array.isArray(specialties) ||
+            !isStringArray(qualification) ||
+            !isStringArray(specialties) ||
             !Array.isArray(availability)
         ) {
             return responseHandler(
                 res,
                 StatusCode.BAD_REQUEST,
-                "Specialties and availability must be arrays."
+                "Qualifications and specialties must be arrays of non-empty strings, and availability must be an array."
             );
         }
 
-        if (user && !mongoose.isValidObjectId(user)) {
+        if (
+            typeof profileImage !== "string" ||
+            profileImage.length > 2048
+        ) {
+            return responseHandler(
+                res,
+                StatusCode.BAD_REQUEST,
+                "Profile image must be a valid string."
+            );
+        }
+
+        const normalizedUser =
+            user === undefined || user === null || user === ""
+                ? undefined
+                : user;
+
+        if (
+            normalizedUser &&
+            !mongoose.isValidObjectId(normalizedUser)
+        ) {
             return responseHandler(
                 res,
                 StatusCode.BAD_REQUEST,
@@ -47,8 +79,10 @@ const createTherapist = async (req, res) => {
             );
         }
 
-        if (user) {
-            const existingTherapist = await Therapist.findOne({ user });
+        if (normalizedUser) {
+            const existingTherapist = await Therapist.findOne({
+                user: normalizedUser,
+            });
 
             if (existingTherapist) {
                 return responseHandler(
@@ -60,12 +94,12 @@ const createTherapist = async (req, res) => {
         }
 
         const therapist = await Therapist.create({
-            user: user || undefined,
+            user: normalizedUser,
             name: name.trim(),
-            qualification,
-            specialties,
+            qualification: qualification.map((item) => item.trim()),
+            specialties: specialties.map((item) => item.trim()),
             availability,
-            profileImage
+            profileImage: profileImage.trim(),
         });
 
         return responseHandler(
@@ -85,7 +119,10 @@ const createTherapist = async (req, res) => {
             );
         }
 
-        if (error.name === "ValidationError" || error.name === "CastError") {
+        if (
+            error.name === "ValidationError" ||
+            error.name === "CastError"
+        ) {
             return responseHandler(
                 res,
                 StatusCode.BAD_REQUEST,
@@ -103,7 +140,9 @@ const createTherapist = async (req, res) => {
 
 const getTherapists = async (req, res) => {
     try {
-        const therapists = await Therapist.find().sort({ createdAt: -1 });
+        const therapists = await Therapist.find().sort({
+            createdAt: -1,
+        });
 
         return responseHandler(
             res,
@@ -111,7 +150,7 @@ const getTherapists = async (req, res) => {
             "Therapists retrieved successfully.",
             {
                 count: therapists.length,
-                therapists
+                therapists,
             }
         );
     } catch (error) {
@@ -127,5 +166,5 @@ const getTherapists = async (req, res) => {
 
 module.exports = {
     createTherapist,
-    getTherapists
+    getTherapists,
 };

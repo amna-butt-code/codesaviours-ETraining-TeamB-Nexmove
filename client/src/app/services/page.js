@@ -1,73 +1,114 @@
 import Link from "next/link";
-import PageHero from "../../components/PageHero";
-import { getList, formatNumber } from "../../lib/api";
+import { getList } from "../../lib/api";
 
 export const metadata = {
-  title: "Services | Nexmove Physiotherapy Clinic",
+  title: "Physiotherapy Services | Nexmove",
   description:
-    "View the current services listed by Nexmove Physiotherapy Clinic.",
+    "Explore the physiotherapy services currently listed by Nexmove in Faisalabad.",
 };
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function Services() {
   const services = await getList("/api/services/getServices");
 
   return (
-    <div>
-      <PageHero
-        title="Our Services"
-        subtitle="Services currently listed by the clinic."
-      />
+    <main className="nm-directory-page">
+      <section className="nm-directory-hero">
+        <div className="nm-container nm-directory-hero-grid">
+          <div>
+            <span className="nm-directory-eyebrow">
+              REHABILITATION <span aria-hidden="true">|</span> WELLNESS
+            </span>
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 py-10 sm:grid-cols-2 lg:grid-cols-3">
-        {services.length === 0 ? (
-          <p className="sm:col-span-2 lg:col-span-3">
-            No active services are currently listed online. Please contact
-            the clinic for current service information.
-          </p>
-        ) : (
-          services.map((service) => (
-            <article
-              key={service._id}
-              className="rounded-xl border bg-white p-5 shadow-sm"
-            >
-              <h2 className="text-xl font-bold text-[var(--color-dark)]">
-                {service.name}
-              </h2>
+            <h1>
+              Services for <em>better movement.</em>
+            </h1>
 
-              <p className="mt-2 text-gray-700">
-                {service.description ||
-                  "A detailed description has not yet been provided."}
-              </p>
+            <p>
+              Explore the physiotherapy services currently listed by
+              Nexmove. Contact the clinic for details about availability
+              and appointments.
+            </p>
+          </div>
 
-              <div className="mt-4 space-y-1 text-sm text-gray-600">
-                {service.duration != null && (
-                  <p>
-                    Duration: {formatNumber(service.duration)} minutes
-                  </p>
-                )}
-
-                {service.price != null && (
-                  <p>
-                    Recorded price: {formatNumber(service.price)}
-                    <span className="ml-1 text-xs">
-                      (currency not specified in this service record)
-                    </span>
-                  </p>
-                )}
-              </div>
-
-              <Link
-                href={`/services/${service._id}`}
-                className="mt-4 inline-block font-medium text-[var(--color-primary)] underline"
-              >
-                View details
-              </Link>
-            </article>
-          ))
-        )}
+          <aside className="nm-directory-highlight">
+            <span>THE NEXMOVE MESSAGE</span>
+            <strong>Helping you move better.</strong>
+            <p>Your next move towards a better life.</p>
+          </aside>
+        </div>
       </section>
-    </div>
+
+      <section className="nm-directory-section">
+        <div className="nm-container">
+          <div className="nm-directory-heading">
+            <div>
+              <span className="nm-directory-eyebrow">OUR SERVICES</span>
+              <h2>Explore the list</h2>
+            </div>
+
+            <span className="nm-directory-count">
+              {services.length}{" "}
+              {services.length === 1 ? "service" : "services"} listed
+            </span>
+          </div>
+
+          {services.length === 0 ? (
+            <div className="nm-directory-empty">
+              <h3>Services are being updated</h3>
+              <p>
+                There are no active services listed online at the moment.
+                Contact the clinic for current information.
+              </p>
+              <Link href="/contact" className="nm-button">
+                Contact the clinic
+              </Link>
+            </div>
+          ) : (
+            <div className="nm-directory-grid">
+              {services.map((service, index) => (
+                <article className="nm-directory-card" key={service._id}>
+                  <div className="nm-directory-card-top">
+                    <span className="nm-directory-number">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="nm-directory-card-mark" aria-hidden="true">
+                      N
+                    </span>
+                  </div>
+
+                  <h3>{service.name}</h3>
+
+                  <p>
+                    {service.description?.trim() ||
+                      "Contact the clinic for further information about this service."}
+                  </p>
+
+                  {service._id ? (
+                    <Link
+                      href={`/services/${encodeURIComponent(service._id)}`}
+                      className="nm-directory-link"
+                    >
+                      View service details
+                    </Link>
+                  ) : (
+                    <Link href="/contact" className="nm-directory-link">
+                      Ask about this service
+                    </Link>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+
+          <p className="nm-directory-disclaimer">
+            Service information is general website content. Fees and
+            session lengths have not been confirmed for publication.
+            Contact Nexmove for current details.
+          </p>
+        </div>
+      </section>
+    </main>
   );
 }

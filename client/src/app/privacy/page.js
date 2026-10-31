@@ -28,7 +28,9 @@ export default function Privacy() {
         </div>
         <div>
           <h2 className="text-2xl font-bold text-[var(--color-dark)] mb-2">Contact</h2>
-          <p>[Clinic email and phone]</p>
+          <p>
+  Phone: <a href="tel:03266312211">0326 6312211</a>
+</p>
         </div>
         <p className="text-sm">This is a draft policy and must be reviewed by the clinic before launch.</p>
       </section>
