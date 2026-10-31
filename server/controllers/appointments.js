@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+﻿const mongoose = require("mongoose");
 const crypto = require("crypto");
 
 const responseHandler = require("../utils/responseHandler");
@@ -257,13 +257,21 @@ async function validateSelectedSlot({ therapist, service, start }) {
     return { error: "Invalid therapist." };
   }
 
-  const duration = Number(service.duration);
 
-  if (!Number.isFinite(duration) || duration <= 0) {
-    return {
-      error: "The service duration is not configured correctly.",
-    };
-  }
+const duration = service.duration;
+
+if (
+  !Number.isSafeInteger(duration) ||
+  duration < 1 ||
+  typeof service.price !== "number" ||
+  !Number.isFinite(service.price) ||
+  service.price < 0
+) {
+  return {
+    error: "This service is not configured for online booking yet. Please contact the clinic.",
+  };
+}
+
 
   if (
     !(start instanceof Date) ||
@@ -770,6 +778,21 @@ const bookGuestAppointment = async (req, res) => {
         "Active service not found."
       );
     }
+
+if (
+  !Number.isSafeInteger(service.duration) ||
+  service.duration < 1 ||
+  typeof service.price !== "number" ||
+  !Number.isFinite(service.price) ||
+  service.price < 0
+) {
+  return responseHandler(
+    res,
+    StatusCode.BAD_REQUEST,
+    "This service is not configured for online booking yet. Please contact the clinic."
+  );
+}
+
 
     // Use the same lock mechanism for guest bookings.
     lockTherapistId = therapist._id;
