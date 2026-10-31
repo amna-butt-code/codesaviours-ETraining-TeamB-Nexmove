@@ -134,7 +134,7 @@ async function findOverlappingAppointments(
   start,
   end,
   session = null
-) => {
+) {
   const query = Appointment.find({
     therapist: therapistId,
     status: { $in: ACTIVE_APPOINTMENT_STATUSES },
