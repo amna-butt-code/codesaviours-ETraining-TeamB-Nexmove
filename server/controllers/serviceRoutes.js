@@ -6,15 +6,20 @@ const allowedFields = new Set([
     "name",
     "description",
     "duration",
+    "durationIsEstimated",
     "price",
     "isActive",
 ]);
 
-// A confirmed duration is required for reliable slot generation.
-// A confirmed price is not required to enable online booking.
+// Estimated durations are allowed for scheduling.
+// Booking requires a valid duration, configured price and active service.
 const isBookingConfigured = (service) =>
+    service.isActive !== false &&
     Number.isSafeInteger(service.duration) &&
-    service.duration >= 1;
+    service.duration >= 1 &&
+    typeof service.price === "number" &&
+    Number.isFinite(service.price) &&
+    service.price >= 0;
 
 const serializeService = (service) => {
     const record =
@@ -86,6 +91,13 @@ const validatePayload = (
         ) {
             return "Duration must be a positive whole number of minutes.";
         }
+    }
+
+    if (
+        Object.prototype.hasOwnProperty.call(body, "durationIsEstimated") &&
+        typeof body.durationIsEstimated !== "boolean"
+    ) {
+        return "durationIsEstimated must be a boolean.";
     }
 
     if (
