@@ -10,12 +10,11 @@ const allowedFields = new Set([
     "isActive",
 ]);
 
+// A confirmed duration is required for reliable slot generation.
+// A confirmed price is not required to enable online booking.
 const isBookingConfigured = (service) =>
     Number.isSafeInteger(service.duration) &&
-    service.duration >= 1 &&
-    typeof service.price === "number" &&
-    Number.isFinite(service.price) &&
-    service.price >= 0;
+    service.duration >= 1;
 
 const serializeService = (service) => {
     const record =
@@ -29,11 +28,6 @@ const serializeService = (service) => {
     };
 };
 
-/**
- * Validate service creation and partial update payloads.
- * Creation requires name, duration and price because the
- * current Mongoose service schema requires all three.
- */
 const validatePayload = (
     body,
     { requireCreateFields = false } = {}
@@ -58,11 +52,12 @@ const validatePayload = (
 
     if (
         requireCreateFields &&
-        (!Object.prototype.hasOwnProperty.call(body, "name") ||
-            !Object.prototype.hasOwnProperty.call(body, "duration") ||
-            !Object.prototype.hasOwnProperty.call(body, "price"))
+        (
+            !Object.prototype.hasOwnProperty.call(body, "name") ||
+            !Object.prototype.hasOwnProperty.call(body, "duration")
+        )
     ) {
-        return "Name, duration, and price are required.";
+        return "Name and duration are required.";
     }
 
     if (Object.prototype.hasOwnProperty.call(body, "name")) {
@@ -93,7 +88,11 @@ const validatePayload = (
         }
     }
 
-    if (Object.prototype.hasOwnProperty.call(body, "price")) {
+    if (
+        Object.prototype.hasOwnProperty.call(body, "price") &&
+        body.price !== null &&
+        body.price !== ""
+    ) {
         if (
             typeof body.price !== "number" ||
             !Number.isFinite(body.price) ||
@@ -156,6 +155,11 @@ const createService = async (req, res) => {
                 typeof req.body.description === "string"
                     ? req.body.description.trim()
                     : "",
+            price:
+                req.body.price === "" ||
+                req.body.price === undefined
+                    ? null
+                    : req.body.price,
         };
 
         const service = await Service.create(payload);
@@ -238,6 +242,13 @@ const updateService = async (req, res) => {
         const updates = {
             ...req.body,
         };
+
+        if (
+            Object.prototype.hasOwnProperty.call(updates, "price") &&
+            updates.price === ""
+        ) {
+            updates.price = null;
+        }
 
         if (typeof updates.name === "string") {
             updates.name = updates.name.trim();
