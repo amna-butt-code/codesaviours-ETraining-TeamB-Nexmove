@@ -4,6 +4,11 @@ const Patient = require('../models/patient');
 const responseHandler = require("../utils/responseHandler");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+
+
+
+const { sendPasswordResetEmail } = require("../utils/emailService");
 
 
 
@@ -46,8 +51,8 @@ const { name, email, password, phone, dateOfBirth, address } = req.body;
       password: hashedPassword,
       role: "patient",
     });
-    console.log("User created:", newUser._id);
-console.log("Patient collection:", Patient.collection.name);
+
+
 
   await Patient.create({
   user: newUser._id,
@@ -55,7 +60,7 @@ console.log("Patient collection:", Patient.collection.name);
   dateOfBirth: dateOfBirth || undefined,
   address: address?.trim() || undefined,
 });
-console.log("Patient profile created successfully");
+
 
 
     return responseHandler(res,StatusCode.SUCCESS,"User registered successfully",
@@ -225,5 +230,119 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
 
-  module.exports = {registerUser, userLogin, updateUser, deleteUser};
+    if (
+      typeof token !== "string" ||
+      !token.trim() ||
+      typeof newPassword !== "string" ||
+      newPassword.length < 8
+    ) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "A valid reset token and a password of at least 8 characters are required."
+      );
+    }
+
+    const resetTokenHash = crypto
+      .createHash("sha256")
+      .update(token.trim())
+      .digest("hex");
+
+    const user = await User.findOne({
+      passwordResetTokenHash: resetTokenHash,
+      passwordResetExpires: { $gt: new Date() }
+    }).select("+passwordResetTokenHash +passwordResetExpires");
+
+    if (!user) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Password reset link is invalid or has expired."
+      );
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+
+    user.passwordResetTokenHash = undefined;
+    user.passwordResetExpires = undefined;
+
+    await user.save();
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Password has been reset successfully. You can now log in."
+    );
+  } catch (error) {
+    console.error("Password reset failed.");
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Unable to reset password."
+    );
+  }
+};
+
+
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (typeof email !== "string" || !email.trim()) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Please provide a valid email address."
+      );
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (user) {
+      const resetToken = crypto.randomBytes(32).toString("hex");
+
+      const resetTokenHash = crypto
+        .createHash("sha256")
+        .update(resetToken)
+        .digest("hex");
+
+      user.passwordResetTokenHash = resetTokenHash;
+      user.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+      await user.save();
+
+      const resetUrl =
+        `http://localhost:3000/reset-password?token=${resetToken}`;
+
+      try {
+        await sendPasswordResetEmail(user.email, resetUrl);
+      } catch (emailError) {
+        console.error("Password reset email delivery failed.");
+      }
+    }
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "If an account with that email exists, password reset instructions have been sent."
+    );
+  } catch (error) {
+    console.error("Forgot password error:", error.message);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Unable to process the password reset request."
+    );
+  }
+};
+
+
+
+  module.exports = {registerUser, userLogin, updateUser, deleteUser,forgotPassword,resetPassword};

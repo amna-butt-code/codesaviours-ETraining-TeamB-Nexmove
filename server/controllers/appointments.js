@@ -134,7 +134,7 @@ async function findOverlappingAppointments(
   start,
   end,
   session = null
-) {
+) => {
   const query = Appointment.find({
     therapist: therapistId,
     status: { $in: ACTIVE_APPOINTMENT_STATUSES },
@@ -143,9 +143,9 @@ async function findOverlappingAppointments(
       { appointmentEnd: { $gt: start } },
       {
         appointmentEnd: { $exists: false },
-        appointmentDate: { $gte: start },
-      },
-    ],
+        appointmentDate: { $gte: start }
+      }
+    ]
   });
 
   if (session) {
@@ -362,6 +362,7 @@ if (
 
 const getAvailableSlots = async (req, res) => {
   try {
+    console.log("Backend timezone:", Intl.DateTimeFormat().resolvedOptions().timeZone);
     const { therapistId, serviceId, date } = req.query;
 
     if (
@@ -869,30 +870,11 @@ if (
       StatusCode.SERVER_ERROR,
       "Failed to book guest appointment."
     );
-  } finally {
-    if (lockToken && lockTherapistId && lockDateKey) {
-      try {
-        await releaseAppointmentLock(
-          lockTherapistId,
-          lockDateKey,
-          lockToken
-        );
-      } catch (releaseError) {
-        console.error(
-          "Failed to release appointment lock:",
-          releaseError
-        );
-      }
-    }
   }
 };
-
-/* -------------------------------------------------------------------------- */
-/*                                  Exports                                   */
-/* -------------------------------------------------------------------------- */
 
 module.exports = {
   getAvailableSlots,
   bookAppointment,
-  bookGuestAppointment,
+  bookGuestAppointment
 };
