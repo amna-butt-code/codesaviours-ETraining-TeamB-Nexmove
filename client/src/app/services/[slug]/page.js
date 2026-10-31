@@ -35,10 +35,10 @@ function getPrice(service) {
   return Number.isFinite(price) && price >= 0 ? price : null;
 }
 
-function formatAmount(amount) {
-  return amount.toLocaleString("en-PK", {
-    maximumFractionDigits: 2,
-  });
+function formatPKR(amount) {
+  return `PKR ${amount.toLocaleString("en-PK", {
+    maximumFractionDigits: 0,
+  })}`;
 }
 
 export default async function ServiceDetail({ params }) {
@@ -54,6 +54,12 @@ export default async function ServiceDetail({ params }) {
 
   const duration = getDuration(service);
   const price = getPrice(service);
+  const durationIsEstimated =
+    service.durationIsEstimated === true;
+
+  const canBook =
+    duration !== null &&
+    price !== null;
 
   return (
     <main className="nm-detail-page">
@@ -87,34 +93,38 @@ export default async function ServiceDetail({ params }) {
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-[var(--color-light)] p-4">
               <span className="block text-sm text-gray-600">
-                Session duration
+                {durationIsEstimated
+                  ? "Estimated session duration"
+                  : "Session duration"}
               </span>
 
               <strong className="mt-1 block text-lg text-[var(--color-dark)]">
                 {duration === null
-                  ? "Not confirmed"
+                  ? "Contact the clinic"
                   : `${duration} minutes`}
               </strong>
             </div>
 
             <div className="rounded-xl bg-[var(--color-light)] p-4">
               <span className="block text-sm text-gray-600">
-                Service fee
+                Fee per session
               </span>
 
               <strong className="mt-1 block text-lg text-[var(--color-dark)]">
                 {price === null
                   ? "Contact the clinic"
-                  : formatAmount(price)}
+                  : formatPKR(price)}
               </strong>
-
-              {price !== null && (
-                <span className="mt-1 block text-xs text-gray-500">
-                  Currency not specified in the service record.
-                </span>
-              )}
             </div>
           </div>
+
+          {durationIsEstimated && duration !== null && (
+            <p className="mt-4 text-sm text-gray-600">
+              The displayed duration is an estimate used for appointment
+              scheduling. Actual treatment time may vary according to
+              the patient's assessment and treatment requirements.
+            </p>
+          )}
 
           <div className="mt-6">
             <h3 className="text-lg font-semibold text-[var(--color-dark)]">
@@ -123,7 +133,7 @@ export default async function ServiceDetail({ params }) {
 
             <p className="mt-2 text-gray-700">
               Contact the clinic to ask about this service, current
-              appointment availability, fees and treatment arrangements.
+              appointment availability and treatment arrangements.
             </p>
           </div>
 
@@ -132,7 +142,7 @@ export default async function ServiceDetail({ params }) {
               Contact Nexmove
             </Link>
 
-            {service.bookingEnabled === true && (
+            {canBook && (
               <Link href="/book" className="nm-detail-secondary">
                 Explore online booking
               </Link>

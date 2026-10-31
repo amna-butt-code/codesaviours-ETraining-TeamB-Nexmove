@@ -6,7 +6,7 @@ import { getList } from "../../lib/api";
 export const metadata = {
   title: "Physiotherapy Services | Nexmove",
   description:
-    "Explore the physiotherapy services currently listed by Nexmove in Faisalabad.",
+    "Explore physiotherapy services, session fees and estimated appointment durations at Nexmove in Faisalabad.",
 };
 
 export const dynamic = "force-dynamic";
@@ -41,10 +41,10 @@ function getPrice(service) {
   return Number.isFinite(price) && price >= 0 ? price : null;
 }
 
-function formatAmount(amount) {
-  return amount.toLocaleString("en-PK", {
-    maximumFractionDigits: 2,
-  });
+function formatPKR(amount) {
+  return `PKR ${amount.toLocaleString("en-PK", {
+    maximumFractionDigits: 0,
+  })}`;
 }
 
 export default async function Services() {
@@ -63,8 +63,9 @@ export default async function Services() {
 
             <p>
               Explore the physiotherapy services currently listed by
-              Nexmove. Learn more about each service and contact the
-              clinic for confirmed fees, availability and appointments.
+              Nexmove. View session fees and estimated appointment
+              durations, and choose the service that best matches your
+              needs.
             </p>
           </div>
 
@@ -112,6 +113,8 @@ export default async function Services() {
               {services.map((service, index) => {
                 const duration = getDuration(service);
                 const price = getPrice(service);
+                const isEstimated =
+                  service.durationIsEstimated === true;
 
                 return (
                   <Reveal
@@ -137,7 +140,11 @@ export default async function Services() {
 
                       <dl className="nm-directory-meta">
                         <div>
-                          <dt>Duration</dt>
+                          <dt>
+                            {isEstimated
+                              ? "Estimated duration"
+                              : "Session duration"}
+                          </dt>
                           <dd>
                             {duration === null
                               ? "Contact the clinic"
@@ -146,11 +153,11 @@ export default async function Services() {
                         </div>
 
                         <div>
-                          <dt>Fee</dt>
+                          <dt>Fee per session</dt>
                           <dd>
                             {price === null
                               ? "Contact the clinic"
-                              : `${formatAmount(price)} (currency not specified)`}
+                              : formatPKR(price)}
                           </dd>
                         </div>
                       </dl>
@@ -180,9 +187,11 @@ export default async function Services() {
           )}
 
           <p className="nm-directory-disclaimer">
-            Fees, session lengths and appointment availability are
-            displayed only where confirmed information is available.
-            Contact Nexmove for details that have not been published.
+            The session fee is PKR 1,500. Displayed durations are
+            estimates for appointment scheduling, not guaranteed
+            treatment times. Actual session duration may vary according
+            to the patient's assessment and treatment requirements.
+            Contact the clinic if you need further information.
           </p>
         </div>
       </section>

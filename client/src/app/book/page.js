@@ -79,8 +79,9 @@ function hasValidServiceDuration(service) {
 
 function isServiceBookable(service) {
   return (
-    service?.bookingEnabled === true &&
-    hasValidServiceDuration(service)
+    service?.isActive !== false &&
+    hasValidServiceDuration(service) &&
+    getServicePrice(service) !== null
   );
 }
 
@@ -286,7 +287,7 @@ export default function Book() {
 
     if (!service || !isServiceBookable(service)) {
       setSubmitError(
-        "A confirmed session duration is required before this service can be booked online. Please contact the clinic."
+        "This service does not have valid booking information. Please contact the clinic."
       );
       return;
     }
@@ -343,7 +344,7 @@ export default function Book() {
 
     if (!isServiceBookable(selectedService)) {
       setSlotError(
-        "A confirmed session duration is required before checking appointment slots."
+        "This service does not have valid scheduling information."
       );
       return;
     }
@@ -529,7 +530,7 @@ export default function Book() {
 
     if (!isServiceBookable(selectedService)) {
       setSubmitError(
-        "A confirmed session duration is required before this service can be booked online."
+        "This service does not have valid booking information. Please contact the clinic."
       );
       return;
     }
@@ -606,7 +607,10 @@ export default function Book() {
     setSubmitting(true);
 
     try {
-const bookingEndpoint = "/api/appointments/book";
+const bookingEndpoint =
+  bookingType === "guest"
+    ? "/api/appointments/bookGuest"
+    : "/api/appointments/book";
 
       const response = await fetch(bookingEndpoint, {
         method: "POST",
@@ -730,14 +734,13 @@ const bookingEndpoint = "/api/appointments/book";
                   </p>
                 ) : (
                   <>
-                    {bookableServices.length === 0 && (
-                      <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-                        Online booking is unavailable because confirmed
-                        session durations have not been provided for these
-                        services. Please contact the clinic for appointment
-                        information.
-                      </p>
-                    )}
+{bookableServices.length === 0 && (
+  <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+    Online booking is currently unavailable because no services
+    have valid scheduling information. Please contact the clinic
+    for assistance.
+  </p>
+)}
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       {services.map((service) => {
@@ -766,23 +769,27 @@ const bookingEndpoint = "/api/appointments/book";
                               </span>
                             )}
 
-                            <span className="mt-2 block text-sm text-gray-600">
-                              Fee:{" "}
-                              {price === null
-                                ? "Please contact the clinic"
-                                : `${price.toLocaleString("en-PK")} (currency not specified)`}
-                            </span>
+<span className="mt-2 block text-sm text-gray-600">
+  Fee per session:{" "}
+  {price === null
+    ? "Please contact the clinic"
+    : `PKR ${price.toLocaleString("en-PK")}`}
+</span>
 
                             {bookable ? (
-                              <span className="mt-1 block text-sm text-gray-600">
-                                Duration: {Number(service.duration)} minutes
-                              </span>
+<span className="mt-1 block text-sm text-gray-600">
+  {service.durationIsEstimated
+    ? "Estimated duration"
+    : "Session duration"}
+  : {Number(service.duration)} minutes
+</span>
                             ) : (
-                              <span className="mt-2 block text-sm text-amber-800">
-                                Session duration has not been confirmed.
-                                Please contact the clinic to arrange an
-                                appointment.
-                              </span>
+<span className="mt-2 block text-sm text-amber-800">
+  {!hasValidServiceDuration(service)
+    ? "Appointment duration is not configured."
+    : "Session fee is not configured."}
+  {" "}Please contact the clinic.
+</span>
                             )}
                           </button>
                         );
@@ -979,12 +986,26 @@ const bookingEndpoint = "/api/appointments/book";
                     {form.slot?.startTime || "—"}
                   </p>
 
-                  <p>
-                    Fee:{" "}
-                    {getServicePrice(selectedService) === null
-                      ? "Please confirm with the clinic"
-                      : `${getServicePrice(selectedService).toLocaleString("en-PK")} (currency not specified)`}
-                  </p>
+<p>
+  Fee per session:{" "}
+  {getServicePrice(selectedService) === null
+    ? "Please confirm with the clinic"
+    : `PKR ${getServicePrice(selectedService).toLocaleString("en-PK")}`}
+</p>
+
+<p>
+  {selectedService?.durationIsEstimated
+    ? "Estimated duration"
+    : "Session duration"}:{" "}
+  {selectedService?.duration ?? "—"} minutes
+</p>
+
+{selectedService?.durationIsEstimated && (
+  <p className="mt-2 text-sm text-gray-600">
+    Actual treatment time may vary depending on your assessment
+    and treatment requirements.
+  </p>
+)}
                 </div>
 
                 {sessionUser && (
