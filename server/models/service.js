@@ -6,27 +6,27 @@ const serviceSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
     description: {
       type: String,
       trim: true,
-      default: ""
+      default: "",
     },
     duration: {
       type: Number,
       required: true,
-      min: 1
+      min: 1,
     },
     price: {
       type: Number,
-      required: true,
-      min: 0
+      min: 0,
+      default: null,
     },
     isActive: {
       type: Boolean,
-      default: true
-    }
+      default: true,
+    },
   },
   { timestamps: true }
 );
