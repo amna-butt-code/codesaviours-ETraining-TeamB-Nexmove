@@ -12,6 +12,7 @@ const primaryLinks = [
   { name: "Services", href: "/services" },
   { name: "Conditions", href: "/conditions" },
   { name: "Our Team", href: "/team" },
+  { name: "Ask Nexmove", href: "/chat" },
   { name: "Contact", href: "/contact" },
 ];
 
@@ -19,19 +20,12 @@ const exploreLinks = [
   { name: "Packages & Fees", href: "/packages" },
   { name: "Journal / Blog", href: "/blog" },
   { name: "Frequently Asked Questions", href: "/faq" },
-  { name: "Ask Nexmove", href: "/chat" },
   { name: "Pain Assessment", href: "/pain-assessment" },
 ];
 
 function ArrowIcon() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path
         d="M3 8H13M9 4L13 8L9 12"
         stroke="currentColor"
@@ -45,13 +39,7 @@ function ArrowIcon() {
 
 function ChevronIcon() {
   return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      aria-hidden="true"
-    >
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
       <path
         d="M2.5 4.5L6 8L9.5 4.5"
         stroke="currentColor"
