@@ -10,7 +10,34 @@ const allowedFields = new Set([
     "isActive",
 ]);
 
-const validatePayload = (body, requireName = false) => {
+const isBookingConfigured = (service) =>
+    Number.isSafeInteger(service.duration) &&
+    service.duration >= 1 &&
+    typeof service.price === "number" &&
+    Number.isFinite(service.price) &&
+    service.price >= 0;
+
+const serializeService = (service) => {
+    const record =
+        typeof service.toObject === "function"
+            ? service.toObject()
+            : service;
+
+    return {
+        ...record,
+        bookingEnabled: isBookingConfigured(record),
+    };
+};
+
+/**
+ * Validate service creation and partial update payloads.
+ * Creation requires name, duration and price because the
+ * current Mongoose service schema requires all three.
+ */
+const validatePayload = (
+    body,
+    { requireCreateFields = false } = {}
+) => {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
         return "Request body must be a JSON object.";
     }
@@ -30,10 +57,12 @@ const validatePayload = (body, requireName = false) => {
     }
 
     if (
-        requireName &&
-        (typeof body.name !== "string" || !body.name.trim())
+        requireCreateFields &&
+        (!Object.prototype.hasOwnProperty.call(body, "name") ||
+            !Object.prototype.hasOwnProperty.call(body, "duration") ||
+            !Object.prototype.hasOwnProperty.call(body, "price"))
     ) {
-        return "A non-empty service name is required.";
+        return "Name, duration, and price are required.";
     }
 
     if (Object.prototype.hasOwnProperty.call(body, "name")) {
@@ -42,7 +71,7 @@ const validatePayload = (body, requireName = false) => {
             !body.name.trim() ||
             body.name.trim().length > 120
         ) {
-            return "Name must be a non-empty string with a maximum of 120 characters.";
+            return "Name must be a non-empty string (maximum 120 characters).";
         }
     }
 
@@ -51,7 +80,7 @@ const validatePayload = (body, requireName = false) => {
             typeof body.description !== "string" ||
             body.description.length > 2000
         ) {
-            return "Description must be a string with a maximum of 2000 characters.";
+            return "Description must be text (maximum 2000 characters).";
         }
     }
 
@@ -70,7 +99,7 @@ const validatePayload = (body, requireName = false) => {
             !Number.isFinite(body.price) ||
             body.price < 0
         ) {
-            return "Price must be a valid non-negative number.";
+            return "Price must be a finite, non-negative number.";
         }
     }
 
@@ -107,29 +136,12 @@ const handleError = (res, error, operation) => {
     });
 };
 
-const isBookingConfigured = (service) =>
-    Number.isSafeInteger(service.duration) &&
-    service.duration >= 1 &&
-    typeof service.price === "number" &&
-    Number.isFinite(service.price) &&
-    service.price >= 0;
-
-const serializeService = (service) => {
-    const record =
-        typeof service.toObject === "function"
-            ? service.toObject()
-            : service;
-
-    return {
-        ...record,
-        bookingEnabled: isBookingConfigured(record),
-    };
-};
-
-// Create service
+// Create a service
 const createService = async (req, res) => {
     try {
-        const validationError = validatePayload(req.body, true);
+        const validationError = validatePayload(req.body, {
+            requireCreateFields: true,
+        });
 
         if (validationError) {
             return res.status(400).json({
@@ -157,7 +169,7 @@ const createService = async (req, res) => {
     }
 };
 
-// Retrieve active services
+// Retrieve all active services
 const getServices = async (req, res) => {
     try {
         const services = await Service.find({
@@ -174,7 +186,7 @@ const getServices = async (req, res) => {
     }
 };
 
-// Retrieve one active service
+// Retrieve one active service by MongoDB ID
 const getServiceById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -192,7 +204,7 @@ const getServiceById = async (req, res) => {
 
         if (!service) {
             return res.status(404).json({
-                message: "Service not found.",
+                message: "Active service not found.",
             });
         }
 
@@ -204,7 +216,7 @@ const getServiceById = async (req, res) => {
     }
 };
 
-// Update service (partial update)
+// Partially update an existing service
 const updateService = async (req, res) => {
     try {
         const { id } = req.params;
@@ -223,7 +235,9 @@ const updateService = async (req, res) => {
             });
         }
 
-        const updates = { ...req.body };
+        const updates = {
+            ...req.body,
+        };
 
         if (typeof updates.name === "string") {
             updates.name = updates.name.trim();
@@ -257,7 +271,7 @@ const updateService = async (req, res) => {
     }
 };
 
-// Soft-delete service by marking it inactive
+// Soft-delete an active service
 const deleteService = async (req, res) => {
     try {
         const { id } = req.params;
@@ -268,9 +282,16 @@ const deleteService = async (req, res) => {
             });
         }
 
-        const service = await Service.findByIdAndUpdate(
-            id,
-            { $set: { isActive: false } },
+        const service = await Service.findOneAndUpdate(
+            {
+                _id: id,
+                isActive: true,
+            },
+            {
+                $set: {
+                    isActive: false,
+                },
+            },
             {
                 new: true,
                 runValidators: true,
@@ -279,7 +300,7 @@ const deleteService = async (req, res) => {
 
         if (!service) {
             return res.status(404).json({
-                message: "Service not found.",
+                message: "Active service not found.",
             });
         }
 
