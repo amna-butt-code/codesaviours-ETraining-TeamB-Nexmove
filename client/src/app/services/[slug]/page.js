@@ -122,7 +122,7 @@ export default async function ServiceDetail({ params }) {
             <p className="mt-4 text-sm text-gray-600">
               The displayed duration is an estimate used for appointment
               scheduling. Actual treatment time may vary according to
-              the patient's assessment and treatment requirements.
+              the patient&apos;s assessment and treatment requirements.
             </p>
           )}
 
