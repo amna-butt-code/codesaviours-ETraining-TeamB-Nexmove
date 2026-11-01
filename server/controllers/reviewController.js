@@ -8,7 +8,7 @@ const { classifySentiment } = require("../utils/sentimentAnalysis");
 
 const listApprovedReviews = async (req, res) => {
   try {
-    const reviews = await Review.find({ approved: true })
+    const reviews = await Review.find({ approved: true,isHidden: false })
       .select("rating text sentiment createdAt")
       .sort({ createdAt: -1 })
       .limit(50)
@@ -108,4 +108,75 @@ const approveReview = async (req, res) => {
   }
 };
 
-module.exports = { listApprovedReviews, createReview, approveReview };
+const getPendingReviews = async (req, res) => {
+  try {
+    const reviews = await Review.find({
+      approved: false,
+      isHidden: false,
+    })
+      .populate({
+        path: "patient",
+        populate: { path: "user", select: "name email" },
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Pending reviews retrieved successfully.",
+      reviews
+    );
+  } catch (error) {
+    console.error("Get pending reviews error:", error.message);
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Unable to retrieve pending reviews."
+    );
+  }
+};
+
+const hideReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "A valid review ID is required."
+      );
+    }
+
+    const review = await Review.findByIdAndUpdate(
+      id,
+      { isHidden: true },
+      { new: true, runValidators: true }
+    ).select("rating text approved isHidden createdAt");
+
+    if (!review) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Review not found."
+      );
+    }
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Review hidden successfully.",
+      review
+    );
+  } catch (error) {
+    console.error("Hide review error:", error.message);
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Unable to hide review."
+    );
+  }
+};
+
+module.exports = { listApprovedReviews, createReview, approveReview, getPendingReviews, hideReview };

@@ -27,6 +27,7 @@ const messageRoutes = require("./routes/messageRoutes");
 const postRoutes = require("./routes/postRoutes");
 const packageRoutes = require("./routes/packageRoutes");
 const assistantRoutes = require("./routes/assistantRoutes");
+const adminRoutes  = require("./routes/admin");
 
 
 const app = express();
@@ -50,6 +51,7 @@ app.use("/api/holidays", holidayRoutes);
 app.use("/api/therapists", therapistRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/assistant", assistantRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Public content routes
 app.use("/api/faqs", faqRoutes);

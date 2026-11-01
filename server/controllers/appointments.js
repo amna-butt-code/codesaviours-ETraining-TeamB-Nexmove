@@ -1287,5 +1287,175 @@ const updateAppointmentStatus = async (req, res) => {
   }
 };
 
+const getAllAppointments = async (req, res) => {
+  try {
+    const { date, therapist, status } = req.query;
+    const filter = {};
 
-module.exports = {getAvailableSlots,bookAppointment,bookGuestAppointment,cancelAppointment, rescheduleAppointment, updateAppointmentStatus};
+    // Filter by Pakistan-local appointment date.
+    if (date) {
+      if (
+        typeof date !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(date)
+      ) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Date must use YYYY-MM-DD format."
+        );
+      }
+
+      const [year, month, day] = date.split("-").map(Number);
+      const startDate = new Date(year, month - 1, day);
+
+      if (
+        startDate.getFullYear() !== year ||
+        startDate.getMonth() !== month - 1 ||
+        startDate.getDate() !== day
+      ) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Invalid appointment date."
+        );
+      }
+
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+
+      filter.appointmentDate = {
+        $gte: startDate,
+        $lt: endDate,
+      };
+    }
+
+    // Filter by therapist ID.
+    if (therapist) {
+      if (!mongoose.isValidObjectId(therapist)) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Invalid therapist ID."
+        );
+      }
+
+      filter.therapist = therapist;
+    }
+
+    // Filter by appointment status.
+    if (status) {
+      const allowedStatuses = [
+        "pending",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "no-show",
+      ];
+
+      if (!allowedStatuses.includes(status)) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Invalid appointment status."
+        );
+      }
+
+      filter.status = status;
+    }
+
+    const appointments = await Appointment.find(filter)
+      .populate({
+        path: "patient",
+        populate: {
+          path: "user",
+          select: "name email",
+        },
+      })
+      .populate("therapist", "name")
+      .populate("service", "name")
+      .sort({ appointmentDate: -1 })
+      .lean();
+
+    const result = appointments.map((appointment) => ({
+      ...appointment,
+      patientName:
+        appointment.patient?.user?.name ||
+        appointment.guestName ||
+        "Guest",
+      therapistName: appointment.therapist?.name || null,
+      serviceName: appointment.service?.name || null,
+    }));
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "All appointments retrieved successfully.",
+      result
+    );
+  } catch (error) {
+    console.error("Get all appointments error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Unable to retrieve appointments."
+    );
+  }
+};
+
+
+const getMyAppointments = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+
+    if (!userId) {
+      return responseHandler(
+        res,
+        StatusCode.UNAUTHORIZED,
+        "Please log in to view your appointments."
+      );
+    }
+
+    const patient = await Patient.findOne({ user: userId });
+
+    if (!patient) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Patient profile not found."
+      );
+    }
+
+    const appointments = await Appointment.find({
+      patient: patient._id,
+    })
+      .populate("therapist", "name")
+      .populate("service", "name duration price")
+      .sort({ appointmentDate: -1 })
+      .lean();
+
+    const result = appointments.map((appointment) => ({
+      ...appointment,
+      therapistName: appointment.therapist?.name || null,
+      serviceName: appointment.service?.name || null,
+    }));
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Your appointments retrieved successfully.",
+      result
+    );
+  } catch (error) {
+    console.error("Get my appointments error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Unable to retrieve your appointments."
+    );
+  }
+};
+
+
+module.exports = {getAvailableSlots,bookAppointment,bookGuestAppointment,cancelAppointment, rescheduleAppointment, updateAppointmentStatus,getAllAppointments,getMyAppointments};

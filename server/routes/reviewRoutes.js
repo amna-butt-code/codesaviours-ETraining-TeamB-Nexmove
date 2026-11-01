@@ -5,6 +5,8 @@ const {
   listApprovedReviews,
   createReview,
   approveReview,
+  getPendingReviews,
+  hideReview
 } = require("../controllers/reviewController");
 
 const router = express.Router();
@@ -16,4 +18,7 @@ router.post("/", authMiddleware, createReview);
 // Only admins can publish a review.
 router.put("/:id/approve", authMiddleware, roleMiddleware("admin"), approveReview);
 
+
+router.get("/pending",authMiddleware,roleMiddleware("admin"),getPendingReviews);
+router.put("/:id/hide",authMiddleware,roleMiddleware("admin"),hideReview);
 module.exports = router;

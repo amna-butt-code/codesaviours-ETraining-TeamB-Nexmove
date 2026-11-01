@@ -1,14 +1,10 @@
 
 const mongoose = require("mongoose");
 const Service = require("../models/service");
+const { StatusCode } = require("../consts/statusCode");
+const responseHandler = require("../utils/responseHandler");
 
-const allowedFields = new Set([
-    "name",
-    "description",
-    "duration",
-    "price",
-    "isActive",
-]);
+const allowedFields = new Set(["name","description","duration","price","isActive",]);
 
 const validatePayload = (body, requireName = false) => {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -85,9 +81,7 @@ const validatePayload = (body, requireName = false) => {
 
 const handleError = (res, error, operation) => {
     if (error.code === 11000) {
-        return res.status(409).json({
-            message: "A duplicate service already exists.",
-        });
+        return responseHandler(res,StatusCode.CONFLICT,"A duplicate service already exists.");
     }
 
     if (
@@ -95,16 +89,12 @@ const handleError = (res, error, operation) => {
         error.name === "CastError" ||
         error instanceof mongoose.Error
     ) {
-        return res.status(400).json({
-            message: error.message,
-        });
+        return responseHandler(res,StatusCode.BAD_REQUEST,error.message);
     }
 
     console.error(`${operation} error:`, error);
 
-    return res.status(500).json({
-        message: "An internal server error occurred.",
-    });
+    return responseHandler(res,StatusCode.INTERNAL_SERVER_ERROR,"An internal server error occurred.");
 };
 
 const isBookingConfigured = (service) =>
@@ -132,9 +122,7 @@ const createService = async (req, res) => {
         const validationError = validatePayload(req.body, true);
 
         if (validationError) {
-            return res.status(400).json({
-                message: validationError,
-            });
+            return responseHandler(res,StatusCode.BAD_REQUEST,validationError);
         }
 
         const payload = {
@@ -148,10 +136,7 @@ const createService = async (req, res) => {
 
         const service = await Service.create(payload);
 
-        return res.status(201).json({
-            message: "Service created successfully.",
-            service: serializeService(service),
-        });
+       return responseHandler(res,StatusCode.INSERTED,"Service created successfully.",{ service: serializeService(service) });
     } catch (error) {
         return handleError(res, error, "Create service");
     }
@@ -166,9 +151,7 @@ const getServices = async (req, res) => {
             .sort({ name: 1 })
             .lean();
 
-        return res.status(200).json(
-            services.map(serializeService)
-        );
+       return responseHandler(res,StatusCode.SUCCESS,"Services retrieved successfully.",services.map(serializeService));
     } catch (error) {
         return handleError(res, error, "Get services");
     }
@@ -180,9 +163,7 @@ const getServiceById = async (req, res) => {
         const { id } = req.params;
 
         if (!mongoose.isValidObjectId(id)) {
-            return res.status(400).json({
-                message: "Invalid service ID.",
-            });
+           return responseHandler(res,StatusCode.BAD_REQUEST,"Invalid service ID.");
         }
 
         const service = await Service.findOne({
@@ -191,14 +172,10 @@ const getServiceById = async (req, res) => {
         }).lean();
 
         if (!service) {
-            return res.status(404).json({
-                message: "Service not found.",
-            });
+           return responseHandler(res,StatusCode.NOT_FOUND,"Service not found.");
         }
 
-        return res.status(200).json(
-            serializeService(service)
-        );
+        return responseHandler(res,StatusCode.SUCCESS,"Service retrieved successfully.",serializeService(service));
     } catch (error) {
         return handleError(res, error, "Get service");
     }
@@ -210,17 +187,13 @@ const updateService = async (req, res) => {
         const { id } = req.params;
 
         if (!mongoose.isValidObjectId(id)) {
-            return res.status(400).json({
-                message: "Invalid service ID.",
-            });
+            return responseHandler(res,StatusCode.BAD_REQUEST,"Invalid service ID.");
         }
 
         const validationError = validatePayload(req.body);
 
         if (validationError) {
-            return res.status(400).json({
-                message: validationError,
-            });
+            return responseHandler(res,StatusCode.BAD_REQUEST,validationError);
         }
 
         const updates = { ...req.body };
@@ -243,15 +216,10 @@ const updateService = async (req, res) => {
         );
 
         if (!service) {
-            return res.status(404).json({
-                message: "Service not found.",
-            });
+            return responseHandler(res,StatusCode.NOT_FOUND,"Service not found.");
         }
 
-        return res.status(200).json({
-            message: "Service updated successfully.",
-            service: serializeService(service),
-        });
+        return responseHandler(res,StatusCode.SUCCESS,"Service updated successfully.",serializeService(service));
     } catch (error) {
         return handleError(res, error, "Update service");
     }
@@ -263,9 +231,7 @@ const deleteService = async (req, res) => {
         const { id } = req.params;
 
         if (!mongoose.isValidObjectId(id)) {
-            return res.status(400).json({
-                message: "Invalid service ID.",
-            });
+            return responseHandler(res,StatusCode.BAD_REQUEST,"Invalid service ID.");
         }
 
         const service = await Service.findByIdAndUpdate(
@@ -278,15 +244,10 @@ const deleteService = async (req, res) => {
         );
 
         if (!service) {
-            return res.status(404).json({
-                message: "Service not found.",
-            });
+            return responseHandler(res,StatusCode.NOT_FOUND,"Service not found.");
         }
 
-        return res.status(200).json({
-            message: "Service deactivated successfully.",
-            service: serializeService(service),
-        });
+        return responseHandler(res,StatusCode.SUCCESS,"Service deactivated successfully.",serializeService(service));
     } catch (error) {
         return handleError(res, error, "Delete service");
     }

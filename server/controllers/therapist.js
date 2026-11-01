@@ -125,7 +125,74 @@ const getTherapists = async (req, res) => {
     }
 };
 
-module.exports = {
-    createTherapist,
-    getTherapists
+
+const updateTherapist = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.isValidObjectId(id)) {
+            return responseHandler(res,StatusCode.BAD_REQUEST,"Invalid therapist ID.");
+        }
+
+        const allowedFields = ["name", "qualification", "specialties", "availability", "inactive", "profileImage"];
+
+        const updates = {};
+
+        allowedFields.forEach((field) => {
+            if (req.body[field] !== undefined) {
+                updates[field] = req.body[field];
+            }
+        });
+
+        if (Object.keys(updates).length === 0) {
+            return responseHandler(res,StatusCode.BAD_REQUEST,"No valid fields provided for update.");
+        }
+
+        const therapist = await Therapist.findByIdAndUpdate(
+            id,
+            updates,
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+
+        if (!therapist) {
+            return responseHandler(res,  StatusCode.NOT_FOUND,  "Therapist not found.");
+        }
+
+        return responseHandler(res,StatusCode.SUCCESS,"Therapist updated successfully.",
+            {
+                 therapist 
+                }
+        );
+    } catch (error) {
+
+        return responseHandler(res,StatusCode.BAD_REQUEST,"Failed to update therapist. Please check the provided data.");
+    }
 };
+
+const deleteTherapist = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.isValidObjectId(id)) {
+            return responseHandler(res,StatusCode.BAD_REQUEST,"Invalid therapist ID.");
+        }
+
+        const therapist = await Therapist.findByIdAndDelete(id);
+
+        if (!therapist) {
+            return responseHandler(res,StatusCode.NOT_FOUND,"Therapist not found.");
+        }
+
+        return responseHandler(res,StatusCode.SUCCESS,"Therapist deleted successfully.");
+    } catch (error) {
+        console.error("Delete therapist error:", error);
+
+        return responseHandler(res,StatusCode.SERVER_ERROR,"Failed to delete therapist.");
+    }
+};
+
+
+module.exports = {createTherapist,getTherapists,updateTherapist,deleteTherapist};

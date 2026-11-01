@@ -8,7 +8,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require ("../middleware/roleMiddleware")
 
 
-const {bookAppointment,getAvailableSlots,bookGuestAppointment,cancelAppointment,rescheduleAppointment,updateAppointmentStatus} = require("../controllers/appointments");
+const {bookAppointment,getAvailableSlots,bookGuestAppointment,cancelAppointment,rescheduleAppointment,updateAppointmentStatus,getAllAppointments,getMyAppointments} = require("../controllers/appointments");
 
 
 router.post("/book",authMiddleware,validateAppointmentBooking,bookingRateLimiter,bookAppointment);
@@ -33,5 +33,7 @@ router.patch(
   rescheduleAppointment
 );
 router.patch("/:id/status",authMiddleware,roleMiddleware("admin"),bookingRateLimiter,updateAppointmentStatus);
+router.get("/all",authMiddleware,roleMiddleware("admin"),getAllAppointments);
+router.get("/my", authMiddleware, getMyAppointments);
 
 module.exports = router;

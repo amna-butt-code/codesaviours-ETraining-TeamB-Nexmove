@@ -4,6 +4,8 @@ const router = express.Router();
 const {
   createTherapist,
   getTherapists,
+  updateTherapist,
+  deleteTherapist
 } = require("../controllers/therapist");
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -19,5 +21,8 @@ router.post(
   roleMiddleware("admin"),
   createTherapist
 );
+
+router.put("/update/:id",authMiddleware,roleMiddleware("admin"),updateTherapist);
+router.delete("/delete/:id",authMiddleware,roleMiddleware("admin"),deleteTherapist);
 
 module.exports = router;
