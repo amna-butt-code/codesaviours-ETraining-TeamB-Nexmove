@@ -2254,6 +2254,36 @@ margin: 0 0 55px;
   background: #f5f8f7;
 }
 
+.nm-condition-detail-copy {
+  display: grid;
+  gap: 14px;
+}
+
+.nm-condition-detail-copy p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.nm-condition-section-intro {
+  margin-top: 12px;
+}
+
+.nm-detail-contact > p {
+  max-width: 650px;
+  margin: 16px 0 0;
+  line-height: 1.8;
+}
+
+.nm-detail-contact > .nm-button {
+  display: inline-flex;
+  min-height: 46px;
+  margin-top: 22px;
+  padding: 11px 20px;
+  gap: 8px;
+  font-size: 14px;
+}
 /* Responsive directory and team layouts */
 
 @media (max-width: 850px) {
