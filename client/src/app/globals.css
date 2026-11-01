@@ -1,3 +1,4 @@
+
 @import "tailwindcss";
 
 /* ======================================================
@@ -1509,7 +1510,18 @@ img {
   color: var(--nm-ink);
 }
 
-
+/* Retain the original circular line artwork, now subtle on a light background. */
+.nm-about-message::before,
+.nm-about-message::after {
+  position: absolute;
+  z-index: 0;
+  width: 230px;
+  height: 230px;
+  border: 1px solid rgba(10, 35, 80, 0.11);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
 
 .nm-about-message::before {
   top: 65px;
@@ -1524,32 +1536,33 @@ img {
 }
 
 .nm-about-message-label,
-.nm-about-message-bottom,
-.nm-about-message p {
+.nm-about-message-bottom {
   position: relative;
   z-index: 1;
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  line-height: 1.6;
 }
+
 /* Use the dedicated Nexmove monogram asset instead of a typed letter. */
 .nm-about-message-mark {
   position: absolute;
   z-index: 0;
   top: 50%;
-  right: 50%;
-
-  width: 260px;
-  height: 260px;
-
-  background-image: url("./icon.png");
+  right: 8px;
+  width: 230px;
+  height: 230px;
+  background-image: url("/images/icon.png");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
-
-  opacity: 0.12;
   color: transparent;
   font-size: 0;
-
-  transform: translate(50%, -50%);
-  pointer-events: none;
+  line-height: 0;
+  opacity: 0.12;
+  transform: translateY(-53%);
   user-select: none;
 }
 
@@ -2141,19 +2154,45 @@ img {
 }
 
 .nm-detail-back {
-  display: inline-block;
+  display: flex;
+width: fit-content;
+margin: 0 0 55px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 12px 20px;
+  min-height: 44px;
   margin-bottom: 35px;
-  color: #16848e;
-  font-size: 13px;
+
+  color: #030303;
+  background: transparent;
+  border: 1px solid #16848e;
+  border-radius: 999px;
+
+  font-size: 14px;
   font-weight: 700;
+  line-height: 1.2;
   text-decoration: none;
+
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease;
 }
 
 .nm-detail-back:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  color: #ffffff;
+  background-color: rgba(22, 132, 142, 0.16);
+  border-color: #16848e;
+  text-decoration: none;
+  transform: translateY(-1px);
 }
 
+.nm-detail-back:focus-visible {
+  outline: 2px solid #2fb8a7;
+  outline-offset: 4px;
+}
 .nm-detail-content {
   display: grid;
   max-width: 850px;
@@ -2215,6 +2254,36 @@ img {
   background: #f5f8f7;
 }
 
+.nm-condition-detail-copy {
+  display: grid;
+  gap: 14px;
+}
+
+.nm-condition-detail-copy p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.nm-condition-section-intro {
+  margin-top: 12px;
+}
+
+.nm-detail-contact > p {
+  max-width: 650px;
+  margin: 16px 0 0;
+  line-height: 1.8;
+}
+
+.nm-detail-contact > .nm-button {
+  display: inline-flex;
+  min-height: 46px;
+  margin-top: 22px;
+  padding: 11px 20px;
+  gap: 8px;
+  font-size: 14px;
+}
 /* Responsive directory and team layouts */
 
 @media (max-width: 850px) {
@@ -2411,5 +2480,561 @@ img {
 
   .nm-team-avatar--profile {
     min-height: 190px;
+  }
+}
+
+/* ======================================================
+   NEXMOVE DETAIL-PAGE HEROES
+   Scoped additions: services, conditions and team profiles
+   These rules are appended after existing styles so they
+   do not change the homepage or directory-page appearance.
+====================================================== */
+
+/* Shared full-bleed base for service and condition detail pages. */
+
+.nm-detail-page .nm-detail-hero.nm-detail-hero--medical {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: clamp(620px, 76svh, 850px);
+  overflow: hidden;
+  padding: 0;
+  background: #06172f;
+  color: #ffffff;
+}
+
+/* Existing generic .nm-detail-hero rules remain for other pages. */
+
+.nm-detail-page .nm-detail-hero-artwork {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse at 25% 46%,
+      rgba(15, 102, 153, 0.38),
+      transparent 49%
+    ),
+    linear-gradient(110deg, #061c38 0%, #071a33 65%, #04142a 100%);
+  pointer-events: none;
+}
+
+.nm-detail-page .nm-detail-hero-artwork::before {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse at 27% 45%,
+      rgba(13, 112, 159, 0.14),
+      transparent 51%
+    );
+  content: "";
+}
+
+.nm-detail-page .nm-detail-hero-artwork::after {
+  position: absolute;
+  z-index: 7;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(4, 17, 37, 0.02) 0%,
+      rgba(4, 17, 37, 0.08) 35%,
+      rgba(4, 17, 37, 0.62) 59%,
+      rgba(4, 17, 37, 0.96) 100%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(4, 17, 37, 0.38) 0%,
+      transparent 38%,
+      rgba(4, 17, 37, 0.16) 100%
+    );
+  content: "";
+  pointer-events: none;
+}
+
+.nm-detail-page .nm-detail-hero-image-frame {
+  position: absolute;
+  overflow: hidden;
+}
+
+.nm-detail-page .nm-detail-hero-image {
+  display: block;
+  object-fit: contain;
+}
+
+/* Atmospheric body-systems texture across the full hero. */
+
+.nm-detail-page .nm-detail-hero-image-frame--systems {
+  inset: -2%;
+}
+
+.nm-detail-page .nm-detail-hero-image--systems {
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.13;
+  mix-blend-mode: screen;
+  filter: saturate(0.78) brightness(0.88) blur(1px);
+}
+
+/* A large, translucent spine layer sits behind the main figure. */
+
+.nm-detail-page .nm-detail-hero-image-frame--spine {
+  top: -17%;
+  left: 4%;
+  width: min(58vw, 900px);
+  height: 135%;
+}
+
+.nm-detail-page .nm-detail-hero-image--spine {
+  object-position: center;
+  opacity: 0.24;
+  mix-blend-mode: screen;
+  filter: hue-rotate(18deg) saturate(0.82) brightness(1.12);
+}
+
+/* Main anatomical figure is intentionally the strongest visual layer. */
+
+.nm-detail-page .nm-detail-hero-image-frame--figure {
+  top: -12%;
+  left: -4%;
+  width: min(68vw, 990px);
+  height: 125%;
+}
+
+.nm-detail-page .nm-detail-hero-image--figure {
+  object-position: center;
+  opacity: 0.82;
+  mix-blend-mode: screen;
+  filter: saturate(1.08) contrast(1.06) brightness(0.96);
+}
+
+/* Localized red glow overlays.
+   Coordinates are approximate and can be fine-tuned after
+   checking the downloaded source artwork. */
+
+.nm-detail-page .nm-detail-hero-hotspot {
+  position: absolute;
+  z-index: 6;
+  display: block;
+  width: clamp(74px, 9vw, 142px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.nm-detail-page .nm-detail-hero-hotspot::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle,
+    rgba(255, 32, 64, 0.76) 0%,
+    rgba(255, 40, 64, 0.45) 23%,
+    rgba(255, 30, 60, 0.18) 49%,
+    transparent 73%
+  );
+  box-shadow: 0 0 42px rgba(255, 35, 65, 0.22);
+  content: "";
+}
+
+.nm-detail-page .nm-detail-hero-hotspot::after {
+  position: absolute;
+  inset: 25%;
+  border: 1.5px solid rgba(255, 90, 108, 0.68);
+  border-radius: inherit;
+  box-shadow:
+    0 0 14px rgba(255, 45, 75, 0.28),
+    inset 0 0 14px rgba(255, 45, 75, 0.18);
+  content: "";
+}
+
+/* Body-region positions are relative to the left-side artwork. */
+
+.nm-detail-page .nm-detail-hero-hotspot--neck {
+  top: 25%;
+  left: 31%;
+}
+
+.nm-detail-page .nm-detail-hero-hotspot--lower-back {
+  top: 59%;
+  left: 30%;
+}
+
+.nm-detail-page .nm-detail-hero-hotspot--shoulder {
+  top: 36%;
+  left: 39%;
+}
+
+.nm-detail-page .nm-detail-hero-hotspot--knee {
+  top: 80%;
+  left: 31%;
+}
+
+.nm-detail-page .nm-detail-hero-hotspot--leg {
+  top: 72%;
+  left: 34%;
+}
+
+.nm-detail-page .nm-detail-hero-hotspot--brain {
+  top: 15%;
+  left: 31%;
+}
+
+/* Text and navigation are real HTML elements above the artwork. */
+
+.nm-detail-page .nm-detail-hero-inner {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  width: min(var(--nm-container, 1240px), calc(100% - 48px));
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-rows: auto 1fr;
+  align-items: center;
+  gap: 18px 35px;
+  margin-inline: auto;
+  padding: 34px 0 48px;
+}
+
+/* Transparent teal-outline back button used on all detail sections. */
+
+.nm-detail-page .nm-detail-hero-back {
+  position: relative;
+  z-index: 12;
+  display: inline-flex;
+  width: fit-content;
+  min-height: 50px;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 21px;
+  border: 1.5px solid #16848e;
+  border-radius: 9999px;
+  background: transparent !important;
+  color: #ffffff !important;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-decoration: none;
+  box-shadow: none;
+  transition:
+    border-color 220ms ease,
+    background-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+.nm-detail-page .nm-detail-hero-back:visited {
+  color: #ffffff;
+}
+
+.nm-detail-page .nm-detail-hero-back:hover {
+  transform: translateY(-2px);
+  border-color: #2fb8a7;
+  background: rgba(22, 132, 142, 0.13) !important;
+  color: #ffffff !important;
+  text-decoration: none;
+  box-shadow: 0 0 22px rgba(22, 132, 142, 0.16);
+}
+
+.nm-detail-page .nm-detail-hero-back:focus-visible {
+  outline: 3px solid #2fb8a7;
+  outline-offset: 4px;
+}
+
+.nm-detail-page .nm-detail-hero-back-arrow {
+  display: inline-block;
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 1;
+  transition: transform 220ms ease;
+}
+
+.nm-detail-page .nm-detail-hero-back:hover .nm-detail-hero-back-arrow {
+  transform: translateX(-3px);
+}
+
+.nm-detail-page .nm-detail-hero-copy {
+  max-width: 620px;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+  padding: 15px 0 15px 15px;
+  margin-left: auto;
+}
+
+.nm-detail-page .nm-detail-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 24px;
+  color: #75ddd5;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.11em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.nm-detail-page .nm-detail-hero-eyebrow::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: #2fb8a7;
+  box-shadow: 0 0 13px rgba(47, 184, 167, 0.48);
+  content: "";
+}
+
+.nm-detail-page .nm-detail-hero-title {
+  max-width: 680px;
+  margin: 0;
+  color: #ffffff;
+  font-family: var(--font-display), Georgia, "Times New Roman", serif;
+  font-size: clamp(2.7rem, 5vw, 4.8rem);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 0.99;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.nm-detail-page .nm-detail-hero-accent {
+  display: block;
+  width: 82px;
+  height: 3px;
+  margin: 27px 0 23px;
+  border-radius: 999px;
+  background: #16848e;
+  box-shadow: 0 0 15px rgba(47, 184, 167, 0.24);
+}
+
+.nm-detail-page .nm-detail-hero-description {
+  max-width: 560px;
+  margin: 0;
+  color: rgba(239, 247, 255, 0.86);
+  font-size: clamp(16px, 1.4vw, 19px);
+  line-height: 1.75;
+}
+
+/* Team detail has no anatomical image, but uses the same button. */
+
+.nm-detail-page .nm-detail-hero.nm-team-detail-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 54px 0 72px;
+  background:
+    radial-gradient(
+      ellipse at 78% 20%,
+      rgba(22, 132, 142, 0.2),
+      transparent 38%
+    ),
+    linear-gradient(110deg, #071b36, #0a2350);
+  color: #ffffff;
+}
+
+.nm-detail-page .nm-team-detail-hero::after {
+  position: absolute;
+  right: -160px;
+  bottom: -260px;
+  width: 520px;
+  height: 520px;
+  border: 1px solid rgba(47, 184, 167, 0.16);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.nm-detail-page .nm-team-detail-hero > .nm-container {
+  position: relative;
+  z-index: 1;
+}
+
+.nm-detail-page .nm-team-detail-hero .nm-detail-hero-back {
+  margin-bottom: 34px;
+}
+
+.nm-detail-page .nm-team-detail-hero .nm-directory-eyebrow {
+  color: #75ddd5;
+}
+
+.nm-detail-page .nm-team-detail-hero .nm-container > h1 {
+  max-width: 760px;
+  margin: 20px 0;
+  color: #ffffff;
+  font-family: var(--font-display), Georgia, "Times New Roman", serif;
+  font-size: clamp(3rem, 6.5vw, 5.8rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.nm-detail-page .nm-team-detail-hero .nm-container > p {
+  max-width: 590px;
+  margin: 0;
+  color: rgba(239, 247, 255, 0.82);
+  font-size: 18px;
+  line-height: 1.75;
+}
+
+/* Tablet layout: keep the figure dominant and text readable. */
+
+@media (max-width: 1000px) {
+  .nm-detail-page .nm-detail-hero-inner {
+    gap: 18px 24px;
+  }
+
+  .nm-detail-page .nm-detail-hero-image-frame--figure {
+    left: -12%;
+    width: 75vw;
+  }
+
+  .nm-detail-page .nm-detail-hero-image-frame--spine {
+    left: -3%;
+    width: 68vw;
+  }
+
+  .nm-detail-page .nm-detail-hero-copy {
+    padding-left: 0;
+  }
+
+  .nm-detail-page .nm-detail-hero-title {
+    font-size: clamp(2.6rem, 5.4vw, 4rem);
+  }
+}
+
+/* Mobile: image occupies the upper field, copy sits over the lower fade. */
+
+@media (max-width: 760px) {
+  .nm-detail-page .nm-detail-hero.nm-detail-hero--medical {
+    min-height: 790px;
+  }
+
+  .nm-detail-page .nm-detail-hero-inner {
+    width: calc(100% - 40px);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 20px;
+    padding: 25px 0 42px;
+  }
+
+  .nm-detail-page .nm-detail-hero-back {
+    min-height: 46px;
+    padding: 9px 17px;
+    font-size: 14px;
+  }
+
+  .nm-detail-page .nm-detail-hero-copy {
+    width: 100%;
+    max-width: 620px;
+    grid-column: 1;
+    grid-row: 2;
+    align-self: end;
+    padding: 0 0 8px;
+    margin: 0;
+  }
+
+  .nm-detail-page .nm-detail-hero-eyebrow {
+    margin-bottom: 15px;
+    font-size: 12px;
+  }
+
+  .nm-detail-page .nm-detail-hero-title {
+    max-width: 560px;
+    font-size: clamp(2.65rem, 10vw, 4rem);
+    line-height: 1.02;
+  }
+
+  .nm-detail-page .nm-detail-hero-accent {
+    margin: 20px 0 16px;
+  }
+
+  .nm-detail-page .nm-detail-hero-description {
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .nm-detail-page .nm-detail-hero-artwork::after {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(4, 17, 37, 0.04) 0%,
+        rgba(4, 17, 37, 0.1) 30%,
+        rgba(4, 17, 37, 0.58) 53%,
+        rgba(4, 17, 37, 0.98) 100%
+      );
+  }
+
+  .nm-detail-page .nm-detail-hero-image-frame--figure {
+    top: -1%;
+    left: -25%;
+    width: 112%;
+    height: 79%;
+  }
+
+  .nm-detail-page .nm-detail-hero-image-frame--spine {
+    top: -8%;
+    left: -8%;
+    width: 100%;
+    height: 86%;
+  }
+
+  .nm-detail-page .nm-detail-hero-image-frame--systems {
+    inset: 0;
+  }
+
+  .nm-detail-page .nm-detail-hero-hotspot {
+    width: 95px;
+  }
+
+  .nm-detail-page .nm-team-detail-hero {
+    padding: 43px 0 55px;
+  }
+
+  .nm-detail-page .nm-team-detail-hero > .nm-container {
+    padding-top: 0;
+  }
+
+  .nm-detail-page .nm-team-detail-hero .nm-container > h1 {
+    font-size: clamp(2.6rem, 10vw, 4rem);
+  }
+
+  .nm-detail-page .nm-team-detail-hero .nm-container > p {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 420px) {
+  .nm-detail-page .nm-detail-hero.nm-detail-hero--medical {
+    min-height: 750px;
+  }
+
+  .nm-detail-page .nm-detail-hero-inner {
+    width: calc(100% - 36px);
+  }
+
+  .nm-detail-page .nm-detail-hero-title {
+    font-size: clamp(2.4rem, 11vw, 3.2rem);
+  }
+
+  .nm-detail-page .nm-detail-hero-back {
+    min-height: 44px;
+    padding-inline: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nm-detail-page .nm-detail-hero-back,
+  .nm-detail-page .nm-detail-hero-back-arrow {
+    transition: none;
+  }
+
+  .nm-detail-page .nm-detail-hero-back:hover {
+    transform: none;
   }
 }
