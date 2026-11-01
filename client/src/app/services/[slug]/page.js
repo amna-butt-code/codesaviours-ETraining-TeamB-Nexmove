@@ -1,14 +1,49 @@
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import PageHero from "../../../components/PageHero";
-import { getRecord, formatNumber } from "../../../lib/api";
+import { getRecord } from "../../../lib/api";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
+function getDuration(service) {
+  if (
+    service?.duration === null ||
+    service?.duration === undefined ||
+    service?.duration === ""
+  ) {
+    return null;
+  }
+
+  const duration = Number(service.duration);
+
+  return Number.isSafeInteger(duration) && duration > 0
+    ? duration
+    : null;
+}
+
+function getPrice(service) {
+  if (
+    service?.price === null ||
+    service?.price === undefined ||
+    service?.price === ""
+  ) {
+    return null;
+  }
+
+  const price = Number(service.price);
+
+  return Number.isFinite(price) && price >= 0 ? price : null;
+}
+
+function formatPKR(amount) {
+  return `PKR ${amount.toLocaleString("en-PK", {
+    maximumFractionDigits: 0,
+  })}`;
+}
 
 export default async function ServiceDetail({ params }) {
   const { slug } = await params;
 
-  // The service API currently uses MongoDB IDs, not service slugs.
   const service = await getRecord(
     `/api/services/getService/${encodeURIComponent(slug)}`
   );
@@ -17,55 +52,115 @@ export default async function ServiceDetail({ params }) {
     notFound();
   }
 
+  const duration = getDuration(service);
+  const price = getPrice(service);
+  const durationIsEstimated =
+    service.durationIsEstimated === true;
+
+  const canBook =
+    duration !== null &&
+    price !== null;
+
   return (
-    <div>
-      <PageHero
-        title={service.name}
-        subtitle={
-          service.description ||
-          "Service information provided by Nexmove Physiotherapy Clinic."
-        }
-      />
+    <main className="nm-detail-page">
+      <section className="nm-detail-hero">
+        <div className="nm-container">
+          <Link href="/services" className="nm-detail-back">
+            Back to services
+          </Link>
 
-      <section className="mx-auto max-w-4xl space-y-5 px-4 py-10">
-        <div className="rounded-xl border bg-white p-6">
-          <h2 className="text-xl font-bold text-[var(--color-dark)]">
-            Service Information
-          </h2>
+          <span className="nm-directory-eyebrow">
+            NEXMOVE <span aria-hidden="true">|</span> SERVICES
+          </span>
 
-          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm text-gray-500">Duration</dt>
-              <dd className="font-semibold">
-                {formatNumber(service.duration)} minutes
-              </dd>
+          <h1>{service.name}</h1>
+
+          <p>
+            {service.description?.trim() ||
+              "Contact Nexmove for further information about this service."}
+          </p>
+        </div>
+      </section>
+
+      <section className="nm-container nm-detail-content">
+        <div className="nm-detail-card">
+          <span className="nm-directory-eyebrow">
+            SERVICE INFORMATION
+          </span>
+
+          <h2>What to know</h2>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl bg-[var(--color-light)] p-4">
+              <span className="block text-sm text-gray-600">
+                {durationIsEstimated
+                  ? "Estimated session duration"
+                  : "Session duration"}
+              </span>
+
+              <strong className="mt-1 block text-lg text-[var(--color-dark)]">
+                {duration === null
+                  ? "Contact the clinic"
+                  : `${duration} minutes`}
+              </strong>
             </div>
 
-            <div>
-              <dt className="text-sm text-gray-500">Recorded price</dt>
-              <dd className="font-semibold">
-                {formatNumber(service.price)}
-                <span className="ml-1 text-xs font-normal text-gray-500">
-                  (currency not specified in service record)
-                </span>
-              </dd>
+            <div className="rounded-xl bg-[var(--color-light)] p-4">
+              <span className="block text-sm text-gray-600">
+                Fee per session
+              </span>
+
+              <strong className="mt-1 block text-lg text-[var(--color-dark)]">
+                {price === null
+                  ? "Contact the clinic"
+                  : formatPKR(price)}
+              </strong>
             </div>
-          </dl>
+          </div>
+
+          {durationIsEstimated && duration !== null && (
+            <p className="mt-4 text-sm text-gray-600">
+              The displayed duration is an estimate used for appointment
+              scheduling. Actual treatment time may vary according to
+              the patient&apos;s assessment and treatment requirements.
+            </p>
+          )}
+
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-[var(--color-dark)]">
+              Need more details?
+            </h3>
+
+            <p className="mt-2 text-gray-700">
+              Contact the clinic to ask about this service, current
+              appointment availability and treatment arrangements.
+            </p>
+          </div>
+
+          <div className="nm-detail-actions">
+            <Link href="/contact" className="nm-button">
+              Contact Nexmove
+            </Link>
+
+            {canBook && (
+              <Link href="/book" className="nm-detail-secondary">
+                Explore online booking
+              </Link>
+            )}
+
+            <Link href="/packages" className="nm-detail-secondary">
+              View packages and fees
+            </Link>
+          </div>
         </div>
 
-        <p className="text-sm text-gray-600">
-          For questions about suitability, treatment details or current
-          availability, contact the clinic. This information is not a
-          diagnosis or a treatment recommendation.
+        <p className="nm-directory-disclaimer">
+          Website information is general guidance and is not a diagnosis
+          or an individual treatment recommendation. Treatment plans
+          and session requirements should be discussed with a qualified
+          physiotherapist.
         </p>
-
-        <Link
-          href="/book"
-          className="inline-block rounded-lg bg-[var(--color-primary)] px-6 py-3 font-semibold text-white"
-        >
-          Request an Appointment
-        </Link>
       </section>
-    </div>
+    </main>
   );
 }

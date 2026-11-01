@@ -1,73 +1,200 @@
+
 import Link from "next/link";
-import PageHero from "../../components/PageHero";
-import { getList, formatNumber } from "../../lib/api";
+import Reveal from "../../components/Reveal";
+import { getList } from "../../lib/api";
 
 export const metadata = {
-  title: "Services | Nexmove Physiotherapy Clinic",
+  title: "Physiotherapy Services | Nexmove",
   description:
-    "View the current services listed by Nexmove Physiotherapy Clinic.",
+    "Explore physiotherapy services, session fees and estimated appointment durations at Nexmove in Faisalabad.",
 };
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
+function getDuration(service) {
+  if (
+    service?.duration === null ||
+    service?.duration === undefined ||
+    service?.duration === ""
+  ) {
+    return null;
+  }
+
+  const duration = Number(service.duration);
+
+  return Number.isSafeInteger(duration) && duration > 0
+    ? duration
+    : null;
+}
+
+function getPrice(service) {
+  if (
+    service?.price === null ||
+    service?.price === undefined ||
+    service?.price === ""
+  ) {
+    return null;
+  }
+
+  const price = Number(service.price);
+
+  return Number.isFinite(price) && price >= 0 ? price : null;
+}
+
+function formatPKR(amount) {
+  return `PKR ${amount.toLocaleString("en-PK", {
+    maximumFractionDigits: 0,
+  })}`;
+}
 
 export default async function Services() {
   const services = await getList("/api/services/getServices");
 
   return (
-    <div>
-      <PageHero
-        title="Our Services"
-        subtitle="Services currently listed by the clinic."
-      />
+    <main className="nm-directory-page">
+      <section className="nm-directory-hero">
+        <div className="nm-container nm-directory-hero-grid">
+          <div>
+            <span className="nm-directory-eyebrow">
+              Rehabilitation and wellness
+            </span>
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 py-10 sm:grid-cols-2 lg:grid-cols-3">
-        {services.length === 0 ? (
-          <p className="sm:col-span-2 lg:col-span-3">
-            No active services are currently listed online. Please contact
-            the clinic for current service information.
-          </p>
-        ) : (
-          services.map((service) => (
-            <article
-              key={service._id}
-              className="rounded-xl border bg-white p-5 shadow-sm"
-            >
-              <h2 className="text-xl font-bold text-[var(--color-dark)]">
-                {service.name}
-              </h2>
+            <h1>Services for better movement.</h1>
 
-              <p className="mt-2 text-gray-700">
-                {service.description ||
-                  "A detailed description has not yet been provided."}
+            <p>
+              Explore the physiotherapy services currently listed by
+              Nexmove. View session fees and estimated appointment
+              durations, and choose the service that best matches your
+              needs.
+            </p>
+          </div>
+
+          <aside
+            className="nm-directory-highlight"
+            aria-label="The Nexmove message"
+          >
+            <span>The Nexmove message</span>
+            <strong>Helping you move better.</strong>
+            <p>Your next move towards a better life.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section className="nm-directory-section">
+        <div className="nm-container">
+          <div className="nm-directory-heading">
+            <div>
+              <span className="nm-directory-eyebrow">
+                Our services
+              </span>
+              <h2>Explore the list</h2>
+            </div>
+
+            <span className="nm-directory-count">
+              {services.length}{" "}
+              {services.length === 1 ? "service" : "services"} listed
+            </span>
+          </div>
+
+          {services.length === 0 ? (
+            <div className="nm-directory-empty">
+              <h3>Services are being updated</h3>
+              <p>
+                There are no active services listed online at the moment.
+                Contact the clinic for current information.
               </p>
 
-              <div className="mt-4 space-y-1 text-sm text-gray-600">
-                {service.duration != null && (
-                  <p>
-                    Duration: {formatNumber(service.duration)} minutes
-                  </p>
-                )}
-
-                {service.price != null && (
-                  <p>
-                    Recorded price: {formatNumber(service.price)}
-                    <span className="ml-1 text-xs">
-                      (currency not specified in this service record)
-                    </span>
-                  </p>
-                )}
-              </div>
-
-              <Link
-                href={`/services/${service._id}`}
-                className="mt-4 inline-block font-medium text-[var(--color-primary)] underline"
-              >
-                View details
+              <Link href="/contact" className="nm-button">
+                Contact the clinic
               </Link>
-            </article>
-          ))
-        )}
+            </div>
+          ) : (
+            <div className="nm-directory-grid">
+              {services.map((service, index) => {
+                const duration = getDuration(service);
+                const price = getPrice(service);
+                const isEstimated =
+                  service.durationIsEstimated === true;
+
+                return (
+                  <Reveal
+                    key={
+                      service._id ||
+                      `${service.name || "service"}-${index}`
+                    }
+                  >
+                    <article className="nm-directory-card">
+                      <div className="nm-directory-card-top">
+                        <span
+                          className="nm-directory-card-mark"
+                          aria-hidden="true"
+                        />
+                      </div>
+
+                      <h3>{service.name}</h3>
+
+                      <p>
+                        {service.description?.trim() ||
+                          "Contact the clinic for further information about this service."}
+                      </p>
+
+                      <dl className="nm-directory-meta">
+                        <div>
+                          <dt>
+                            {isEstimated
+                              ? "Estimated duration"
+                              : "Session duration"}
+                          </dt>
+                          <dd>
+                            {duration === null
+                              ? "Contact the clinic"
+                              : `${duration} minutes`}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>Fee per session</dt>
+                          <dd>
+                            {price === null
+                              ? "Contact the clinic"
+                              : formatPKR(price)}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      {service._id ? (
+                        <Link
+                          href={`/services/${encodeURIComponent(
+                            String(service._id)
+                          )}`}
+                          className="nm-directory-link"
+                        >
+                          View service details
+                        </Link>
+                      ) : (
+                        <Link
+                          href="/contact"
+                          className="nm-directory-link"
+                        >
+                          Contact the clinic
+                        </Link>
+                      )}
+                    </article>
+                  </Reveal>
+                );
+              })}
+            </div>
+          )}
+
+          <p className="nm-directory-disclaimer">
+            The session fee is PKR 1,500. Displayed durations are
+            estimates for appointment scheduling, not guaranteed
+            treatment times. Actual session duration may vary according
+            to the patient&apos;s assessment and treatment requirements.
+            Contact the clinic if you need further information.
+          </p>
+        </div>
       </section>
-    </div>
+    </main>
   );
 }

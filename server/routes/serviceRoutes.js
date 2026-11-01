@@ -26,7 +26,6 @@ router.post(
 );
 
 // Admin-only update endpoints
-// REST-style endpoints
 router.put(
     "/:id",
     authMiddleware,
@@ -41,7 +40,7 @@ router.patch(
     updateService
 );
 
-// Backward-compatible endpoint used by the main branch
+// Backward compatibility with the existing main branch endpoint
 router.patch(
     "/updateService/:id",
     authMiddleware,

@@ -1,3 +1,4 @@
+
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { API } from "../../../../lib/serverApi";
@@ -24,6 +25,7 @@ function validateCommon(payload) {
 async function forwardBooking(endpoint, payload, token = null) {
   const headers = {
     "Content-Type": "application/json",
+    Accept: "application/json",
   };
 
   if (token) {
@@ -43,7 +45,9 @@ async function forwardBooking(endpoint, payload, token = null) {
 
     const json = await response.json().catch(() => ({}));
 
-    return NextResponse.json(json, { status: response.status });
+    return NextResponse.json(json, {
+      status: response.status,
+    });
   } catch (error) {
     console.error("Booking proxy error:", error);
 
@@ -66,7 +70,14 @@ export async function POST(request) {
     );
   }
 
-  const { bookingType, ...payload } = body || {};
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json(
+      { message: "Invalid booking request." },
+      { status: 400 }
+    );
+  }
+
+  const { bookingType, ...payload } = body;
 
   if (!validateCommon(payload)) {
     return NextResponse.json(
@@ -107,16 +118,19 @@ export async function POST(request) {
       );
     }
 
-    return forwardBooking("/api/appointments/bookGuest", {
-      therapistId: payload.therapistId,
-      serviceId: payload.serviceId,
-      appointmentDate: payload.appointmentDate,
-      guestName,
-      guestEmail,
-      guestPhone,
-      consentGiven: true,
-      notes: payload.notes || "",
-    });
+    return forwardBooking(
+      "/api/appointments/bookGuest",
+      {
+        therapistId: payload.therapistId,
+        serviceId: payload.serviceId,
+        appointmentDate: payload.appointmentDate,
+        guestName,
+        guestEmail,
+        guestPhone,
+        consentGiven: true,
+        notes: payload.notes || "",
+      }
+    );
   }
 
   if (bookingType === "account") {
@@ -133,7 +147,6 @@ export async function POST(request) {
       );
     }
 
-    // Only send fields accepted by the authenticated booking endpoint.
     return forwardBooking(
       "/api/appointments/book",
       {

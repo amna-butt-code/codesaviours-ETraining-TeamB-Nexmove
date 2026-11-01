@@ -1,4 +1,4 @@
-﻿const mongoose = require("mongoose");
+const mongoose = require("mongoose");
 const crypto = require("crypto");
 
 const responseHandler = require("../utils/responseHandler");
@@ -17,55 +17,81 @@ const { sendBookingConfirmation } = require("../emails/bookingConfirmation");
 
 const ACTIVE_APPOINTMENT_STATUSES = ["pending", "confirmed"];
 const CLINIC_TIME_ZONE = "Asia/Karachi";
+const TIME_ZONE_OFFSET = "+05:00";
 const LOCK_DURATION_MS = 5 * 60 * 1000;
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /* -------------------------------------------------------------------------- */
 /*                                  Helpers                                   */
 /* -------------------------------------------------------------------------- */
 
 function timeToMinutes(time) {
-  const [hours, minutes] = String(time).split(":").map(Number);
+  if (typeof time !== "string" || !TIME_PATTERN.test(time)) {
+    return NaN;
+  }
+
+  const [hours, minutes] = time.split(":").map(Number);
+
   return hours * 60 + minutes;
 }
 
-function buildDateTime(date, time) {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hours, minutes] = time.split(":").map(Number);
+function isValidDateString(date) {
+  if (
+    typeof date !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(date)
+  ) {
+    return false;
+  }
 
-  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+  const [year, month, day] = date.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+}
+
+function buildDateTime(date, time) {
+  if (
+    !isValidDateString(date) ||
+    typeof time !== "string" ||
+    !TIME_PATTERN.test(time)
+  ) {
+    return new Date(NaN);
+  }
+
+  return new Date(`${date}T${time}:00${TIME_ZONE_OFFSET}`);
 }
 
 function getLocalDateString(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: CLINIC_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
 
-  return `${year}-${month}-${day}`;
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value])
+  );
+
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 function getDateKey(date) {
   return getLocalDateString(date);
 }
 
-function isValidDateString(date) {
-  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return false;
-  }
-
-  const [year, month, day] = date.split("-").map(Number);
-  const parsed = new Date(year, month - 1, day);
-
-  return (
-    parsed.getFullYear() === year &&
-    parsed.getMonth() === month - 1 &&
-    parsed.getDate() === day
-  );
-}
-
 function formatTime(date) {
-  return `${String(date.getHours()).padStart(2, "0")}:${String(
-    date.getMinutes()
-  ).padStart(2, "0")}`;
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: CLINIC_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
 }
 
 function formatEmailDate(date) {
@@ -90,7 +116,7 @@ function formatEmailTime(date) {
 /*                              Email Confirmation                            */
 /* -------------------------------------------------------------------------- */
 
-// A booking should remain saved even if sending the email fails.
+// A booking remains saved even if email delivery fails.
 async function sendConfirmationSafely({
   recipient,
   patientName,
@@ -102,6 +128,7 @@ async function sendConfirmationSafely({
     console.warn(
       "Appointment saved, but no recipient email is available."
     );
+
     return;
   }
 
@@ -153,22 +180,26 @@ async function findOverlappingAppointments(
     filter._id = { $ne: excludeAppointmentId };
   }
 
-  const query = Appointment.find(filter);
+  let query = Appointment.find(filter);
 
   if (session) {
-    query.session(session);
+    query = query.session(session);
   }
 
-  return query;
+  // Return actual records, not an unexecuted Mongoose query.
+  return query.lean().exec();
 }
+
 async function getActiveAppointmentsForDay(
   therapistId,
   date,
   excludeAppointmentId = null
 ) {
   const dayStart = buildDateTime(date, "00:00");
-  const nextDay = new Date(dayStart);
-  nextDay.setDate(nextDay.getDate() + 1);
+
+  // Pakistan has no daylight-saving transition. Use a fixed 24-hour
+  // interval rather than relying on the server's local timezone.
+  const nextDay = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
   const filter = {
     therapist: therapistId,
@@ -196,8 +227,7 @@ async function getActiveAppointmentsForDay(
 
 async function isClinicOrTherapistHoliday(therapistId, date) {
   const dayStart = buildDateTime(date, "00:00");
-  const nextDay = new Date(dayStart);
-  nextDay.setDate(nextDay.getDate() + 1);
+  const nextDay = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
   const holiday = await Holidays.findOne({
     date: { $gte: dayStart, $lt: nextDay },
@@ -236,8 +266,8 @@ async function acquireAppointmentLock(therapistId, dateKey) {
         },
       },
       {
-          returnDocument: "after",
-          upsert: true,
+        new: true,
+        upsert: true,
       }
     );
 
@@ -247,7 +277,7 @@ async function acquireAppointmentLock(therapistId, dateKey) {
 
     return lockToken;
   } catch (error) {
-    // A duplicate-key error means another request already holds this lock.
+    // Another request may have inserted the unique lock first.
     if (error.code === 11000) {
       return null;
     }
@@ -256,7 +286,11 @@ async function acquireAppointmentLock(therapistId, dateKey) {
   }
 }
 
-async function releaseAppointmentLock(therapistId, dateKey, lockToken) {
+async function releaseAppointmentLock(
+  therapistId,
+  dateKey,
+  lockToken
+) {
   await AppointmentLock.deleteOne({
     therapist: therapistId,
     dateKey,
@@ -268,26 +302,30 @@ async function releaseAppointmentLock(therapistId, dateKey, lockToken) {
 /*                         Selected Slot Validation                          */
 /* -------------------------------------------------------------------------- */
 
-async function validateSelectedSlot({ therapist, service, start, excludeAppointmentId = null })  {
+async function validateSelectedSlot({
+  therapist,
+  service,
+  start,
+  excludeAppointmentId = null,
+}) {
   if (!mongoose.isValidObjectId(therapist._id)) {
     return { error: "Invalid therapist." };
   }
 
+  const duration = service.duration;
 
-const duration = service.duration;
-
-if (
-  !Number.isSafeInteger(duration) ||
-  duration < 1 ||
-  typeof service.price !== "number" ||
-  !Number.isFinite(service.price) ||
-  service.price < 0
-) {
-  return {
-    error: "This service is not configured for online booking yet. Please contact the clinic.",
-  };
-}
-
+  if (
+    !Number.isSafeInteger(duration) ||
+    duration < 1 ||
+    typeof service.price !== "number" ||
+    !Number.isFinite(service.price) ||
+    service.price < 0
+  ) {
+    return {
+      error:
+        "This service is not configured for online booking yet. Please contact the clinic.",
+    };
+  }
 
   if (
     !(start instanceof Date) ||
@@ -304,7 +342,8 @@ if (
   const date = getLocalDateString(start);
   const startTime = formatTime(start);
   const end = new Date(start.getTime() + duration * 60 * 1000);
-  const dayOfWeek = start.getDay();
+
+  const dayOfWeek = buildDateTime(date, "12:00").getUTCDay();
 
   const matchingShifts = (therapist.availability || []).filter(
     (shift) =>
@@ -312,7 +351,7 @@ if (
       timeToMinutes(shift.startTime) <= timeToMinutes(startTime) &&
       timeToMinutes(shift.endTime) >=
         timeToMinutes(startTime) + duration &&
-      start.toDateString() === end.toDateString()
+      getLocalDateString(start) === getLocalDateString(end)
   );
 
   if (!matchingShifts.length) {
@@ -381,7 +420,6 @@ if (
 
 const getAvailableSlots = async (req, res) => {
   try {
-    console.log("Backend timezone:", Intl.DateTimeFormat().resolvedOptions().timeZone);
     const { therapistId, serviceId, date } = req.query;
 
     if (
@@ -396,7 +434,7 @@ const getAvailableSlots = async (req, res) => {
       );
     }
 
-    const requestedDay = buildDateTime(date, "12:00").getDay();
+    const requestedDay = buildDateTime(date, "12:00").getUTCDay();
 
     const [therapist, service] = await Promise.all([
       Therapist.findById(therapistId),
@@ -416,6 +454,20 @@ const getAvailableSlots = async (req, res) => {
         res,
         StatusCode.NOT_FOUND,
         "Active service not found."
+      );
+    }
+
+    if (
+      !Number.isSafeInteger(service.duration) ||
+      service.duration < 1 ||
+      typeof service.price !== "number" ||
+      !Number.isFinite(service.price) ||
+      service.price < 0
+    ) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "This service is not configured for online booking yet. Please contact the clinic."
       );
     }
 
@@ -441,7 +493,7 @@ const getAvailableSlots = async (req, res) => {
 
     const appointments = await getActiveAppointmentsForDay(
       therapist._id,
-      date,
+      date
     );
 
     const bookedSlots = appointments.map((item) =>
@@ -463,6 +515,7 @@ const getAvailableSlots = async (req, res) => {
 
       for (const startTime of generatedTimes) {
         const start = buildDateTime(date, startTime);
+
         const end = new Date(
           start.getTime() + service.duration * 60 * 1000
         );
@@ -479,7 +532,9 @@ const getAvailableSlots = async (req, res) => {
         });
 
         if (!isBooked) {
-          const endMinutes = timeToMinutes(startTime) + service.duration;
+          const endMinutes =
+            timeToMinutes(startTime) + service.duration;
+
           const endTime = `${String(
             Math.floor(endMinutes / 60)
           ).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
@@ -609,7 +664,6 @@ const bookAppointment = async (req, res) => {
       );
     }
 
-    // Acquire the lock before validating and creating the appointment.
     lockTherapistId = therapist._id;
     lockDateKey = getDateKey(start);
 
@@ -653,7 +707,6 @@ const bookAppointment = async (req, res) => {
       status: "pending",
     });
 
-    // Email failure must not undo a successfully saved appointment.
     await sendConfirmationSafely({
       recipient: user?.email,
       patientName: user?.name,
@@ -798,22 +851,20 @@ const bookGuestAppointment = async (req, res) => {
       );
     }
 
-if (
-  !Number.isSafeInteger(service.duration) ||
-  service.duration < 1 ||
-  typeof service.price !== "number" ||
-  !Number.isFinite(service.price) ||
-  service.price < 0
-) {
-  return responseHandler(
-    res,
-    StatusCode.BAD_REQUEST,
-    "This service is not configured for online booking yet. Please contact the clinic."
-  );
-}
+    if (
+      !Number.isSafeInteger(service.duration) ||
+      service.duration < 1 ||
+      typeof service.price !== "number" ||
+      !Number.isFinite(service.price) ||
+      service.price < 0
+    ) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "This service is not configured for online booking yet. Please contact the clinic."
+      );
+    }
 
-
-    // Use the same lock mechanism for guest bookings.
     lockTherapistId = therapist._id;
     lockDateKey = getDateKey(start);
 
@@ -887,9 +938,9 @@ if (
     return responseHandler(
       res,
       StatusCode.SERVER_ERROR,
-      "Failed to book guest appointment."
+      "Failed to book appointment."
     );
-  }finally {
+  } finally {
     if (lockToken && lockTherapistId && lockDateKey) {
       try {
         await releaseAppointmentLock(
@@ -907,6 +958,9 @@ if (
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/*                           Cancel Appointment                               */
+/* -------------------------------------------------------------------------- */
 
 const cancelAppointment = async (req, res) => {
   try {
@@ -934,7 +988,6 @@ const cancelAppointment = async (req, res) => {
     // Admins can cancel any appointment.
     if (req.user?.role !== "admin") {
       if (appointment.patient) {
-        // Registered patient ownership check.
         const userId = req.user?._id || req.user?.id;
 
         if (!userId) {
@@ -958,8 +1011,10 @@ const cancelAppointment = async (req, res) => {
           );
         }
       } else {
-        // Temporary guest ownership check.
-        const email = String(guestEmail || "").trim().toLowerCase();
+        const email = String(guestEmail || "")
+          .trim()
+          .toLowerCase();
+
         const phone = String(guestPhone || "").trim();
 
         if (
@@ -1004,6 +1059,10 @@ const cancelAppointment = async (req, res) => {
     );
   }
 };
+
+/* -------------------------------------------------------------------------- */
+/*                         Reschedule Appointment                             */
+/* -------------------------------------------------------------------------- */
 
 const rescheduleAppointment = async (req, res) => {
   let lockToken = null;
@@ -1055,10 +1114,8 @@ const rescheduleAppointment = async (req, res) => {
       );
     }
 
-    // Admins can reschedule any appointment.
     if (req.user?.role !== "admin") {
       if (appointment.patient) {
-        // Registered patient ownership check.
         const userId = req.user?._id || req.user?.id;
 
         if (!userId) {
@@ -1082,8 +1139,10 @@ const rescheduleAppointment = async (req, res) => {
           );
         }
       } else {
-        // Temporary guest ownership check.
-        const email = String(guestEmail || "").trim().toLowerCase();
+        const email = String(guestEmail || "")
+          .trim()
+          .toLowerCase();
+
         const phone = String(guestPhone || "").trim();
 
         if (
@@ -1133,7 +1192,6 @@ const rescheduleAppointment = async (req, res) => {
       );
     }
 
-    // Lock the new appointment date before checking availability.
     lockTherapistId = therapist._id;
     lockDateKey = getDateKey(start);
 
@@ -1150,7 +1208,6 @@ const rescheduleAppointment = async (req, res) => {
       );
     }
 
-    // Exclude this appointment from the availability check.
     const slotResult = await validateSelectedSlot({
       therapist,
       service,
@@ -1173,12 +1230,12 @@ const rescheduleAppointment = async (req, res) => {
 
     await appointment.save();
 
-    // Send an updated confirmation email without undoing the reschedule
-    // if email delivery fails.
     const userId = req.user?._id || req.user?.id;
-    const user = appointment.patient && userId
-      ? await User.findById(userId).select("name email")
-      : null;
+
+    const user =
+      appointment.patient && userId
+        ? await User.findById(userId).select("name email")
+        : null;
 
     await sendConfirmationSafely({
       recipient: appointment.guestEmail || user?.email,
@@ -1227,6 +1284,10 @@ const rescheduleAppointment = async (req, res) => {
     }
   }
 };
+
+/* -------------------------------------------------------------------------- */
+/*                         Appointment Status Update                         */
+/* -------------------------------------------------------------------------- */
 
 const updateAppointmentStatus = async (req, res) => {
   try {
@@ -1287,41 +1348,28 @@ const updateAppointmentStatus = async (req, res) => {
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/*                          Admin Appointment Listing                        */
+/* -------------------------------------------------------------------------- */
+
 const getAllAppointments = async (req, res) => {
   try {
     const { date, therapist, status } = req.query;
     const filter = {};
 
-    // Filter by Pakistan-local appointment date.
     if (date) {
-      if (
-        typeof date !== "string" ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(date)
-      ) {
+      if (!isValidDateString(date)) {
         return responseHandler(
           res,
           StatusCode.BAD_REQUEST,
-          "Date must use YYYY-MM-DD format."
+          "Date must be a valid date in YYYY-MM-DD format."
         );
       }
 
-      const [year, month, day] = date.split("-").map(Number);
-      const startDate = new Date(year, month - 1, day);
-
-      if (
-        startDate.getFullYear() !== year ||
-        startDate.getMonth() !== month - 1 ||
-        startDate.getDate() !== day
-      ) {
-        return responseHandler(
-          res,
-          StatusCode.BAD_REQUEST,
-          "Invalid appointment date."
-        );
-      }
-
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 1);
+      const startDate = buildDateTime(date, "00:00");
+      const endDate = new Date(
+        startDate.getTime() + 24 * 60 * 60 * 1000
+      );
 
       filter.appointmentDate = {
         $gte: startDate,
@@ -1329,7 +1377,6 @@ const getAllAppointments = async (req, res) => {
       };
     }
 
-    // Filter by therapist ID.
     if (therapist) {
       if (!mongoose.isValidObjectId(therapist)) {
         return responseHandler(
@@ -1342,7 +1389,6 @@ const getAllAppointments = async (req, res) => {
       filter.therapist = therapist;
     }
 
-    // Filter by appointment status.
     if (status) {
       const allowedStatuses = [
         "pending",
@@ -1403,12 +1449,15 @@ const getAllAppointments = async (req, res) => {
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/*                         Patient Appointment History                       */
+/* -------------------------------------------------------------------------- */
 
 const getMyAppointments = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
 
-    if (!userId) {
+    if (!userId || !mongoose.isValidObjectId(userId)) {
       return responseHandler(
         res,
         StatusCode.UNAUTHORIZED,
@@ -1457,5 +1506,17 @@ const getMyAppointments = async (req, res) => {
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/*                                  Exports                                   */
+/* -------------------------------------------------------------------------- */
 
-module.exports = {getAvailableSlots,bookAppointment,bookGuestAppointment,cancelAppointment, rescheduleAppointment, updateAppointmentStatus,getAllAppointments,getMyAppointments};
+module.exports = {
+  getAvailableSlots,
+  bookAppointment,
+  bookGuestAppointment,
+  cancelAppointment,
+  rescheduleAppointment,
+  updateAppointmentStatus,
+  getAllAppointments,
+  getMyAppointments,
+};
