@@ -1,6 +1,6 @@
-
 const mongoose = require("mongoose");
 const Therapist = require("../models/therapist");
+
 const { StatusCode } = require("../consts/statusCode");
 const responseHandler = require("../utils/responseHandler");
 
@@ -10,10 +10,19 @@ function isStringArray(value) {
     value.every(
       (item) =>
         typeof item === "string" &&
-        item.trim().length > 0
+        item.trim().length > 0 &&
+        item.trim().length <= 150
     )
   );
 }
+
+function isValidAvailability(value) {
+  return Array.isArray(value);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                             Create Therapist                               */
+/* -------------------------------------------------------------------------- */
 
 const createTherapist = async (req, res) => {
   try {
@@ -32,6 +41,7 @@ const createTherapist = async (req, res) => {
     if (
       typeof name !== "string" ||
       !name.trim() ||
+      name.trim().length > 120 ||
       !Array.isArray(qualification)
     ) {
       return responseHandler(
@@ -44,12 +54,12 @@ const createTherapist = async (req, res) => {
     if (
       !isStringArray(qualification) ||
       !isStringArray(specialties) ||
-      !Array.isArray(availability)
+      !isValidAvailability(availability)
     ) {
       return responseHandler(
         res,
         StatusCode.BAD_REQUEST,
-        "Qualifications and specialties must be arrays of non-empty strings, and availability must be an array."
+        "Qualifications and specialties must contain non-empty strings, and availability must be an array."
       );
     }
 
@@ -151,6 +161,10 @@ const createTherapist = async (req, res) => {
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/*                              Get Therapists                                */
+/* -------------------------------------------------------------------------- */
+
 const getTherapists = async (req, res) => {
   try {
     const therapists = await Therapist.find().sort({
@@ -177,8 +191,12 @@ const getTherapists = async (req, res) => {
   }
 };
 
-// Admin-only partial update. Only explicitly supported profile fields
-// can be changed through this endpoint.
+/* -------------------------------------------------------------------------- */
+/*                             Update Therapist                               */
+/* -------------------------------------------------------------------------- */
+
+// Admin-only partial update.
+// Supports profile details, working availability and active status.
 const updateTherapist = async (req, res) => {
   try {
     const { id } = req.params;
@@ -197,6 +215,8 @@ const updateTherapist = async (req, res) => {
       "qualification",
       "specialties",
       "displayTiming",
+      "availability",
+      "inactive",
       "profileImage",
     ];
 
@@ -204,7 +224,9 @@ const updateTherapist = async (req, res) => {
 
     if (
       suppliedFields.length === 0 ||
-      suppliedFields.some((field) => !allowedFields.includes(field))
+      suppliedFields.some(
+        (field) => !allowedFields.includes(field)
+      )
     ) {
       return responseHandler(
         res,
@@ -216,11 +238,15 @@ const updateTherapist = async (req, res) => {
     const updates = {};
 
     if (Object.prototype.hasOwnProperty.call(body, "name")) {
-      if (typeof body.name !== "string" || !body.name.trim()) {
+      if (
+        typeof body.name !== "string" ||
+        !body.name.trim() ||
+        body.name.trim().length > 120
+      ) {
         return responseHandler(
           res,
           StatusCode.BAD_REQUEST,
-          "Therapist name must be a non-empty string."
+          "Therapist name must be a non-empty string of no more than 120 characters."
         );
       }
 
@@ -274,6 +300,34 @@ const updateTherapist = async (req, res) => {
       }
 
       updates.displayTiming = body.displayTiming.trim();
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(body, "availability")
+    ) {
+      if (!isValidAvailability(body.availability)) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Availability must be an array."
+        );
+      }
+
+      updates.availability = body.availability;
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(body, "inactive")
+    ) {
+      if (typeof body.inactive !== "boolean") {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Inactive status must be a boolean."
+        );
+      }
+
+      updates.inactive = body.inactive;
     }
 
     if (
@@ -334,8 +388,55 @@ const updateTherapist = async (req, res) => {
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/*                             Delete Therapist                               */
+/* -------------------------------------------------------------------------- */
+
+const deleteTherapist = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Invalid therapist ID."
+      );
+    }
+
+    const therapist = await Therapist.findByIdAndDelete(id);
+
+    if (!therapist) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Therapist not found."
+      );
+    }
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Therapist deleted successfully."
+    );
+  } catch (error) {
+    console.error("Delete therapist error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Failed to delete therapist."
+    );
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/*                                  Exports                                   */
+/* -------------------------------------------------------------------------- */
+
 module.exports = {
   createTherapist,
   getTherapists,
   updateTherapist,
+  deleteTherapist,
 };

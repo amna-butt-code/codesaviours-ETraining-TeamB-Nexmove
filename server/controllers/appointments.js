@@ -1,4 +1,4 @@
-﻿const mongoose = require("mongoose");
+const mongoose = require("mongoose");
 const crypto = require("crypto");
 
 const responseHandler = require("../utils/responseHandler");
@@ -17,109 +17,106 @@ const { sendBookingConfirmation } = require("../emails/bookingConfirmation");
 
 const ACTIVE_APPOINTMENT_STATUSES = ["pending", "confirmed"];
 const CLINIC_TIME_ZONE = "Asia/Karachi";
+const TIME_ZONE_OFFSET = "+05:00";
 const LOCK_DURATION_MS = 5 * 60 * 1000;
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /* -------------------------------------------------------------------------- */
 /*                                  Helpers                                   */
 /* -------------------------------------------------------------------------- */
 
-
-const TIME_ZONE_OFFSET = "+05:00";
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-
 function timeToMinutes(time) {
-    if (typeof time !== "string" || !TIME_PATTERN.test(time)) {
-        return NaN;
-    }
+  if (typeof time !== "string" || !TIME_PATTERN.test(time)) {
+    return NaN;
+  }
 
-    const [hours, minutes] = time.split(":").map(Number);
-    return hours * 60 + minutes;
-}
+  const [hours, minutes] = time.split(":").map(Number);
 
-function buildDateTime(date, time) {
-    if (
-        !isValidDateString(date) ||
-        typeof time !== "string" ||
-        !TIME_PATTERN.test(time)
-    ) {
-        return new Date(NaN);
-    }
-
-    return new Date(
-        `${date}T${time}:00${TIME_ZONE_OFFSET}`
-    );
-}
-
-function getLocalDateString(date) {
-    const parts = new Intl.DateTimeFormat("en-GB", {
-        timeZone: CLINIC_TIME_ZONE,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    }).formatToParts(date);
-
-    const values = Object.fromEntries(
-        parts.map((part) => [part.type, part.value])
-    );
-
-    return `${values.year}-${values.month}-${values.day}`;
-}
-
-function getDateKey(date) {
-    return getLocalDateString(date);
+  return hours * 60 + minutes;
 }
 
 function isValidDateString(date) {
-    if (
-        typeof date !== "string" ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(date)
-    ) {
-        return false;
-    }
+  if (
+    typeof date !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(date)
+  ) {
+    return false;
+  }
 
-    const [year, month, day] = date.split("-").map(Number);
-    const parsed = new Date(Date.UTC(year, month - 1, day));
+  const [year, month, day] = date.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
 
-    return (
-        parsed.getUTCFullYear() === year &&
-        parsed.getUTCMonth() === month - 1 &&
-        parsed.getUTCDate() === day
-    );
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+}
+
+function buildDateTime(date, time) {
+  if (
+    !isValidDateString(date) ||
+    typeof time !== "string" ||
+    !TIME_PATTERN.test(time)
+  ) {
+    return new Date(NaN);
+  }
+
+  return new Date(`${date}T${time}:00${TIME_ZONE_OFFSET}`);
+}
+
+function getLocalDateString(date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: CLINIC_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value])
+  );
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function getDateKey(date) {
+  return getLocalDateString(date);
 }
 
 function formatTime(date) {
-    return new Intl.DateTimeFormat("en-GB", {
-        timeZone: CLINIC_TIME_ZONE,
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-    }).format(date);
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: CLINIC_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
 }
 
 function formatEmailDate(date) {
-    return date.toLocaleDateString("en-GB", {
-        timeZone: CLINIC_TIME_ZONE,
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-    });
+  return date.toLocaleDateString("en-GB", {
+    timeZone: CLINIC_TIME_ZONE,
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function formatEmailTime(date) {
-    return date.toLocaleTimeString("en-GB", {
-        timeZone: CLINIC_TIME_ZONE,
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-    });
+  return date.toLocaleTimeString("en-GB", {
+    timeZone: CLINIC_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
-
 
 /* -------------------------------------------------------------------------- */
 /*                              Email Confirmation                            */
 /* -------------------------------------------------------------------------- */
 
-// A booking should remain saved even if sending the email fails.
+// A booking remains saved even if email delivery fails.
 async function sendConfirmationSafely({
   recipient,
   patientName,
@@ -131,6 +128,7 @@ async function sendConfirmationSafely({
     console.warn(
       "Appointment saved, but no recipient email is available."
     );
+
     return;
   }
 
@@ -162,9 +160,10 @@ async function findOverlappingAppointments(
   therapistId,
   start,
   end,
-  session = null
+  session = null,
+  excludeAppointmentId = null
 ) {
-  const query = Appointment.find({
+  const filter = {
     therapist: therapistId,
     status: { $in: ACTIVE_APPOINTMENT_STATUSES },
     appointmentDate: { $lt: end },
@@ -172,24 +171,37 @@ async function findOverlappingAppointments(
       { appointmentEnd: { $gt: start } },
       {
         appointmentEnd: { $exists: false },
-        appointmentDate: { $gte: start }
-      }
-    ]
-  });
+        appointmentDate: { $gte: start },
+      },
+    ],
+  };
 
-  if (session) {
-    query.session(session);
+  if (excludeAppointmentId) {
+    filter._id = { $ne: excludeAppointmentId };
   }
 
-  return query;
+  let query = Appointment.find(filter);
+
+  if (session) {
+    query = query.session(session);
+  }
+
+  // Return actual records, not an unexecuted Mongoose query.
+  return query.lean().exec();
 }
 
-async function getActiveAppointmentsForDay(therapistId, date) {
+async function getActiveAppointmentsForDay(
+  therapistId,
+  date,
+  excludeAppointmentId = null
+) {
   const dayStart = buildDateTime(date, "00:00");
-  const nextDay = new Date(dayStart);
-  nextDay.setDate(nextDay.getDate() + 1);
 
-  return Appointment.find({
+  // Pakistan has no daylight-saving transition. Use a fixed 24-hour
+  // interval rather than relying on the server's local timezone.
+  const nextDay = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+
+  const filter = {
     therapist: therapistId,
     status: { $in: ACTIVE_APPOINTMENT_STATUSES },
     appointmentDate: { $lt: nextDay },
@@ -200,7 +212,13 @@ async function getActiveAppointmentsForDay(therapistId, date) {
         appointmentDate: { $gte: dayStart },
       },
     ],
-  });
+  };
+
+  if (excludeAppointmentId) {
+    filter._id = { $ne: excludeAppointmentId };
+  }
+
+  return Appointment.find(filter);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -209,8 +227,7 @@ async function getActiveAppointmentsForDay(therapistId, date) {
 
 async function isClinicOrTherapistHoliday(therapistId, date) {
   const dayStart = buildDateTime(date, "00:00");
-  const nextDay = new Date(dayStart);
-  nextDay.setDate(nextDay.getDate() + 1);
+  const nextDay = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
   const holiday = await Holidays.findOne({
     date: { $gte: dayStart, $lt: nextDay },
@@ -260,7 +277,7 @@ async function acquireAppointmentLock(therapistId, dateKey) {
 
     return lockToken;
   } catch (error) {
-    // A duplicate-key error means another request already holds this lock.
+    // Another request may have inserted the unique lock first.
     if (error.code === 11000) {
       return null;
     }
@@ -269,7 +286,11 @@ async function acquireAppointmentLock(therapistId, dateKey) {
   }
 }
 
-async function releaseAppointmentLock(therapistId, dateKey, lockToken) {
+async function releaseAppointmentLock(
+  therapistId,
+  dateKey,
+  lockToken
+) {
   await AppointmentLock.deleteOne({
     therapist: therapistId,
     dateKey,
@@ -281,26 +302,30 @@ async function releaseAppointmentLock(therapistId, dateKey, lockToken) {
 /*                         Selected Slot Validation                          */
 /* -------------------------------------------------------------------------- */
 
-async function validateSelectedSlot({ therapist, service, start }) {
+async function validateSelectedSlot({
+  therapist,
+  service,
+  start,
+  excludeAppointmentId = null,
+}) {
   if (!mongoose.isValidObjectId(therapist._id)) {
     return { error: "Invalid therapist." };
   }
 
+  const duration = service.duration;
 
-const duration = service.duration;
-
-if (
-  !Number.isSafeInteger(duration) ||
-  duration < 1 ||
-  typeof service.price !== "number" ||
-  !Number.isFinite(service.price) ||
-  service.price < 0
-) {
-  return {
-    error: "This service is not configured for online booking yet. Please contact the clinic.",
-  };
-}
-
+  if (
+    !Number.isSafeInteger(duration) ||
+    duration < 1 ||
+    typeof service.price !== "number" ||
+    !Number.isFinite(service.price) ||
+    service.price < 0
+  ) {
+    return {
+      error:
+        "This service is not configured for online booking yet. Please contact the clinic.",
+    };
+  }
 
   if (
     !(start instanceof Date) ||
@@ -317,6 +342,7 @@ if (
   const date = getLocalDateString(start);
   const startTime = formatTime(start);
   const end = new Date(start.getTime() + duration * 60 * 1000);
+
   const dayOfWeek = buildDateTime(date, "12:00").getUTCDay();
 
   const matchingShifts = (therapist.availability || []).filter(
@@ -343,7 +369,8 @@ if (
 
   const appointments = await getActiveAppointmentsForDay(
     therapist._id,
-    date
+    date,
+    excludeAppointmentId
   );
 
   const bookedSlots = appointments.map((item) =>
@@ -372,7 +399,9 @@ if (
   const overlaps = await findOverlappingAppointments(
     therapist._id,
     start,
-    end
+    end,
+    null,
+    excludeAppointmentId
   );
 
   if (overlaps.length > 0) {
@@ -391,7 +420,6 @@ if (
 
 const getAvailableSlots = async (req, res) => {
   try {
-    console.log("Backend timezone:", Intl.DateTimeFormat().resolvedOptions().timeZone);
     const { therapistId, serviceId, date } = req.query;
 
     if (
@@ -430,18 +458,18 @@ const getAvailableSlots = async (req, res) => {
     }
 
     if (
-    !Number.isSafeInteger(service.duration) ||
-    service.duration < 1 ||
-    typeof service.price !== "number" ||
-    !Number.isFinite(service.price) ||
-    service.price < 0
-) {
-    return responseHandler(
+      !Number.isSafeInteger(service.duration) ||
+      service.duration < 1 ||
+      typeof service.price !== "number" ||
+      !Number.isFinite(service.price) ||
+      service.price < 0
+    ) {
+      return responseHandler(
         res,
         StatusCode.BAD_REQUEST,
         "This service is not configured for online booking yet. Please contact the clinic."
-    );
-}
+      );
+    }
 
     const schedule = (therapist.availability || []).filter(
       (shift) => shift.dayOfWeek === requestedDay
@@ -487,6 +515,7 @@ const getAvailableSlots = async (req, res) => {
 
       for (const startTime of generatedTimes) {
         const start = buildDateTime(date, startTime);
+
         const end = new Date(
           start.getTime() + service.duration * 60 * 1000
         );
@@ -503,7 +532,9 @@ const getAvailableSlots = async (req, res) => {
         });
 
         if (!isBooked) {
-          const endMinutes = timeToMinutes(startTime) + service.duration;
+          const endMinutes =
+            timeToMinutes(startTime) + service.duration;
+
           const endTime = `${String(
             Math.floor(endMinutes / 60)
           ).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
@@ -633,7 +664,6 @@ const bookAppointment = async (req, res) => {
       );
     }
 
-    // Acquire the lock before validating and creating the appointment.
     lockTherapistId = therapist._id;
     lockDateKey = getDateKey(start);
 
@@ -677,7 +707,6 @@ const bookAppointment = async (req, res) => {
       status: "pending",
     });
 
-    // Email failure must not undo a successfully saved appointment.
     await sendConfirmationSafely({
       recipient: user?.email,
       patientName: user?.name,
@@ -822,22 +851,20 @@ const bookGuestAppointment = async (req, res) => {
       );
     }
 
-if (
-  !Number.isSafeInteger(service.duration) ||
-  service.duration < 1 ||
-  typeof service.price !== "number" ||
-  !Number.isFinite(service.price) ||
-  service.price < 0
-) {
-  return responseHandler(
-    res,
-    StatusCode.BAD_REQUEST,
-    "This service is not configured for online booking yet. Please contact the clinic."
-  );
-}
+    if (
+      !Number.isSafeInteger(service.duration) ||
+      service.duration < 1 ||
+      typeof service.price !== "number" ||
+      !Number.isFinite(service.price) ||
+      service.price < 0
+    ) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "This service is not configured for online booking yet. Please contact the clinic."
+      );
+    }
 
-
-    // Use the same lock mechanism for guest bookings.
     lockTherapistId = therapist._id;
     lockDateKey = getDateKey(start);
 
@@ -911,13 +938,585 @@ if (
     return responseHandler(
       res,
       StatusCode.SERVER_ERROR,
-      "Failed to book guest appointment."
+      "Failed to book appointment."
+    );
+  } finally {
+    if (lockToken && lockTherapistId && lockDateKey) {
+      try {
+        await releaseAppointmentLock(
+          lockTherapistId,
+          lockDateKey,
+          lockToken
+        );
+      } catch (releaseError) {
+        console.error(
+          "Failed to release appointment lock:",
+          releaseError
+        );
+      }
+    }
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/*                           Cancel Appointment                               */
+/* -------------------------------------------------------------------------- */
+
+const cancelAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { guestEmail, guestPhone } = req.body || {};
+
+    if (!mongoose.isValidObjectId(id)) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Invalid appointment ID."
+      );
+    }
+
+    const appointment = await Appointment.findById(id);
+
+    if (!appointment) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Appointment not found."
+      );
+    }
+
+    // Admins can cancel any appointment.
+    if (req.user?.role !== "admin") {
+      if (appointment.patient) {
+        const userId = req.user?._id || req.user?.id;
+
+        if (!userId) {
+          return responseHandler(
+            res,
+            StatusCode.UNAUTHORIZED,
+            "Please log in to cancel this appointment."
+          );
+        }
+
+        const patient = await Patient.findOne({ user: userId });
+
+        if (
+          !patient ||
+          appointment.patient.toString() !== patient._id.toString()
+        ) {
+          return responseHandler(
+            res,
+            StatusCode.NOT_FOUND,
+            "Appointment not found."
+          );
+        }
+      } else {
+        const email = String(guestEmail || "")
+          .trim()
+          .toLowerCase();
+
+        const phone = String(guestPhone || "").trim();
+
+        if (
+          !email ||
+          !phone ||
+          email !== appointment.guestEmail ||
+          phone !== appointment.guestPhone
+        ) {
+          return responseHandler(
+            res,
+            StatusCode.NOT_FOUND,
+            "Appointment not found."
+          );
+        }
+      }
+    }
+
+    if (!ACTIVE_APPOINTMENT_STATUSES.includes(appointment.status)) {
+      return responseHandler(
+        res,
+        StatusCode.CONFLICT,
+        "This appointment cannot be cancelled in its current status."
+      );
+    }
+
+    appointment.status = "cancelled";
+    await appointment.save();
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Appointment cancelled successfully.",
+      appointment
+    );
+  } catch (error) {
+    console.error("Cancel appointment error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Failed to cancel appointment."
     );
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/*                         Reschedule Appointment                             */
+/* -------------------------------------------------------------------------- */
+
+const rescheduleAppointment = async (req, res) => {
+  let lockToken = null;
+  let lockTherapistId = null;
+  let lockDateKey = null;
+
+  try {
+    const { id } = req.params;
+    const { appointmentDate, guestEmail, guestPhone } = req.body || {};
+
+    if (!mongoose.isValidObjectId(id)) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Invalid appointment ID."
+      );
+    }
+
+    if (!appointmentDate) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Please provide a new appointment date and time."
+      );
+    }
+
+    const start = new Date(appointmentDate);
+
+    if (
+      Number.isNaN(start.getTime()) ||
+      start <= new Date() ||
+      start.getSeconds() !== 0 ||
+      start.getMilliseconds() !== 0
+    ) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Please provide a valid future appointment time."
+      );
+    }
+
+    const appointment = await Appointment.findById(id);
+
+    if (!appointment) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Appointment not found."
+      );
+    }
+
+    if (req.user?.role !== "admin") {
+      if (appointment.patient) {
+        const userId = req.user?._id || req.user?.id;
+
+        if (!userId) {
+          return responseHandler(
+            res,
+            StatusCode.UNAUTHORIZED,
+            "Please log in to reschedule this appointment."
+          );
+        }
+
+        const patient = await Patient.findOne({ user: userId });
+
+        if (
+          !patient ||
+          appointment.patient.toString() !== patient._id.toString()
+        ) {
+          return responseHandler(
+            res,
+            StatusCode.NOT_FOUND,
+            "Appointment not found."
+          );
+        }
+      } else {
+        const email = String(guestEmail || "")
+          .trim()
+          .toLowerCase();
+
+        const phone = String(guestPhone || "").trim();
+
+        if (
+          !email ||
+          !phone ||
+          email !== appointment.guestEmail ||
+          phone !== appointment.guestPhone
+        ) {
+          return responseHandler(
+            res,
+            StatusCode.NOT_FOUND,
+            "Appointment not found."
+          );
+        }
+      }
+    }
+
+    if (!ACTIVE_APPOINTMENT_STATUSES.includes(appointment.status)) {
+      return responseHandler(
+        res,
+        StatusCode.CONFLICT,
+        "This appointment cannot be rescheduled in its current status."
+      );
+    }
+
+    const [therapist, service] = await Promise.all([
+      Therapist.findById(appointment.therapist),
+      Service.findOne({
+        _id: appointment.service,
+        isActive: true,
+      }),
+    ]);
+
+    if (!therapist || therapist.inactive) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Therapist not found or inactive."
+      );
+    }
+
+    if (!service) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "The original appointment service is no longer available."
+      );
+    }
+
+    lockTherapistId = therapist._id;
+    lockDateKey = getDateKey(start);
+
+    lockToken = await acquireAppointmentLock(
+      lockTherapistId,
+      lockDateKey
+    );
+
+    if (!lockToken) {
+      return responseHandler(
+        res,
+        StatusCode.CONFLICT,
+        "Another booking is being processed for this therapist. Please try again."
+      );
+    }
+
+    const slotResult = await validateSelectedSlot({
+      therapist,
+      service,
+      start,
+      excludeAppointmentId: appointment._id,
+    });
+
+    if (slotResult.error) {
+      return responseHandler(
+        res,
+        slotResult.conflict
+          ? StatusCode.CONFLICT
+          : StatusCode.BAD_REQUEST,
+        slotResult.error
+      );
+    }
+
+    appointment.appointmentDate = start;
+    appointment.appointmentEnd = slotResult.end;
+
+    await appointment.save();
+
+    const userId = req.user?._id || req.user?.id;
+
+    const user =
+      appointment.patient && userId
+        ? await User.findById(userId).select("name email")
+        : null;
+
+    await sendConfirmationSafely({
+      recipient: appointment.guestEmail || user?.email,
+      patientName: appointment.guestName || user?.name,
+      service,
+      therapist,
+      appointment,
+    });
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Appointment rescheduled successfully.",
+      appointment
+    );
+  } catch (error) {
+    if (error.code === 11000) {
+      return responseHandler(
+        res,
+        StatusCode.CONFLICT,
+        "This time slot is already booked."
+      );
+    }
+
+    console.error("Reschedule appointment error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Failed to reschedule appointment."
+    );
+  } finally {
+    if (lockToken && lockTherapistId && lockDateKey) {
+      try {
+        await releaseAppointmentLock(
+          lockTherapistId,
+          lockDateKey,
+          lockToken
+        );
+      } catch (releaseError) {
+        console.error(
+          "Failed to release appointment lock:",
+          releaseError
+        );
+      }
+    }
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/*                         Appointment Status Update                         */
+/* -------------------------------------------------------------------------- */
+
+const updateAppointmentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body || {};
+
+    if (!mongoose.isValidObjectId(id)) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Invalid appointment ID."
+      );
+    }
+
+    const allowedStatuses = [
+      "pending",
+      "confirmed",
+      "completed",
+      "cancelled",
+      "no-show",
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return responseHandler(
+        res,
+        StatusCode.BAD_REQUEST,
+        "Invalid appointment status."
+      );
+    }
+
+    const appointment = await Appointment.findById(id);
+
+    if (!appointment) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Appointment not found."
+      );
+    }
+
+    appointment.status = status;
+    await appointment.save();
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Appointment status updated successfully.",
+      appointment
+    );
+  } catch (error) {
+    console.error("Update appointment status error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Failed to update appointment status."
+    );
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/*                          Admin Appointment Listing                        */
+/* -------------------------------------------------------------------------- */
+
+const getAllAppointments = async (req, res) => {
+  try {
+    const { date, therapist, status } = req.query;
+    const filter = {};
+
+    if (date) {
+      if (!isValidDateString(date)) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Date must be a valid date in YYYY-MM-DD format."
+        );
+      }
+
+      const startDate = buildDateTime(date, "00:00");
+      const endDate = new Date(
+        startDate.getTime() + 24 * 60 * 60 * 1000
+      );
+
+      filter.appointmentDate = {
+        $gte: startDate,
+        $lt: endDate,
+      };
+    }
+
+    if (therapist) {
+      if (!mongoose.isValidObjectId(therapist)) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Invalid therapist ID."
+        );
+      }
+
+      filter.therapist = therapist;
+    }
+
+    if (status) {
+      const allowedStatuses = [
+        "pending",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "no-show",
+      ];
+
+      if (!allowedStatuses.includes(status)) {
+        return responseHandler(
+          res,
+          StatusCode.BAD_REQUEST,
+          "Invalid appointment status."
+        );
+      }
+
+      filter.status = status;
+    }
+
+    const appointments = await Appointment.find(filter)
+      .populate({
+        path: "patient",
+        populate: {
+          path: "user",
+          select: "name email",
+        },
+      })
+      .populate("therapist", "name")
+      .populate("service", "name")
+      .sort({ appointmentDate: -1 })
+      .lean();
+
+    const result = appointments.map((appointment) => ({
+      ...appointment,
+      patientName:
+        appointment.patient?.user?.name ||
+        appointment.guestName ||
+        "Guest",
+      therapistName: appointment.therapist?.name || null,
+      serviceName: appointment.service?.name || null,
+    }));
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "All appointments retrieved successfully.",
+      result
+    );
+  } catch (error) {
+    console.error("Get all appointments error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Unable to retrieve appointments."
+    );
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/*                         Patient Appointment History                       */
+/* -------------------------------------------------------------------------- */
+
+const getMyAppointments = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+
+    if (!userId || !mongoose.isValidObjectId(userId)) {
+      return responseHandler(
+        res,
+        StatusCode.UNAUTHORIZED,
+        "Please log in to view your appointments."
+      );
+    }
+
+    const patient = await Patient.findOne({ user: userId });
+
+    if (!patient) {
+      return responseHandler(
+        res,
+        StatusCode.NOT_FOUND,
+        "Patient profile not found."
+      );
+    }
+
+    const appointments = await Appointment.find({
+      patient: patient._id,
+    })
+      .populate("therapist", "name")
+      .populate("service", "name duration price")
+      .sort({ appointmentDate: -1 })
+      .lean();
+
+    const result = appointments.map((appointment) => ({
+      ...appointment,
+      therapistName: appointment.therapist?.name || null,
+      serviceName: appointment.service?.name || null,
+    }));
+
+    return responseHandler(
+      res,
+      StatusCode.SUCCESS,
+      "Your appointments retrieved successfully.",
+      result
+    );
+  } catch (error) {
+    console.error("Get my appointments error:", error);
+
+    return responseHandler(
+      res,
+      StatusCode.SERVER_ERROR,
+      "Unable to retrieve your appointments."
+    );
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/*                                  Exports                                   */
+/* -------------------------------------------------------------------------- */
+
 module.exports = {
   getAvailableSlots,
   bookAppointment,
-  bookGuestAppointment
+  bookGuestAppointment,
+  cancelAppointment,
+  rescheduleAppointment,
+  updateAppointmentStatus,
+  getAllAppointments,
+  getMyAppointments,
 };

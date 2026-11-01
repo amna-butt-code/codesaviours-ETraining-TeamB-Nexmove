@@ -28,6 +28,7 @@ const reviewSchema = new mongoose.Schema(
     sentiment: { type: String, enum: ["positive", "neutral", "negative"] },
     // Reviews stay hidden until an admin approves them
     approved: { type: Boolean, default: false },
+    isHidden: { type: Boolean, default: false }, 
   },
   { timestamps: true }
 );

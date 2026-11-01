@@ -9,23 +9,46 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 
 const appointmentController = require("../controllers/appointments");
 
-const {
-  getMyAppointments,
-} = require("../controllers/patientAppointments");
+// Optional authentication:
+// - Guests can submit ownership details.
+// - Signed-in patients and admins are authenticated normally.
+const optionalAuth = (req, res, next) => {
+  if (!req.headers.authorization) {
+    return next();
+  }
 
-// Patient appointment history.
-// The patient is identified through the verified JWT.
+  return authMiddleware(req, res, next);
+};
+
+/* -------------------------------------------------------------------------- */
+/*                         Patient Appointment History                       */
+/* -------------------------------------------------------------------------- */
+
+// Main patient portal endpoint.
 router.get(
   "/",
   authMiddleware,
   roleMiddleware("patient"),
-  getMyAppointments
+  appointmentController.getMyAppointments
 );
+
+// Backwards-compatible endpoint for existing frontend calls.
+router.get(
+  "/my",
+  authMiddleware,
+  roleMiddleware("patient"),
+  appointmentController.getMyAppointments
+);
+
+/* -------------------------------------------------------------------------- */
+/*                                  Booking                                   */
+/* -------------------------------------------------------------------------- */
 
 // Authenticated patient booking.
 router.post(
   "/book",
   authMiddleware,
+  roleMiddleware("patient"),
   validateAppointmentBooking,
   bookingRateLimiter,
   appointmentController.bookAppointment
@@ -39,41 +62,52 @@ router.post(
   appointmentController.bookGuestAppointment
 );
 
-// Available appointment slots.
+// Public available-slot lookup.
 router.get(
   "/getAvailableSlots",
   bookingRateLimiter,
   appointmentController.getAvailableSlots
 );
 
-// Cancellation, rescheduling and status handlers are registered
-// only when they are exported by the appointment controller.
-if (typeof appointmentController.cancelAppointment === "function") {
-  router.patch(
-    "/:id/cancel",
-    authMiddleware,
-    bookingRateLimiter,
-    appointmentController.cancelAppointment
-  );
-}
+/* -------------------------------------------------------------------------- */
+/*                         Cancellation and Rescheduling                      */
+/* -------------------------------------------------------------------------- */
 
-if (typeof appointmentController.rescheduleAppointment === "function") {
-  router.patch(
-    "/:id/reschedule",
-    authMiddleware,
-    bookingRateLimiter,
-    appointmentController.rescheduleAppointment
-  );
-}
+// Patients must authenticate. Guests must provide their booking email
+// and phone, which are checked inside the controller.
+router.patch(
+  "/:id/cancel",
+  bookingRateLimiter,
+  optionalAuth,
+  appointmentController.cancelAppointment
+);
 
-if (typeof appointmentController.updateAppointmentStatus === "function") {
-  router.patch(
-    "/:id/status",
-    authMiddleware,
-    roleMiddleware("admin"),
-    bookingRateLimiter,
-    appointmentController.updateAppointmentStatus
-  );
-}
+router.patch(
+  "/:id/reschedule",
+  bookingRateLimiter,
+  optionalAuth,
+  appointmentController.rescheduleAppointment
+);
+
+/* -------------------------------------------------------------------------- */
+/*                              Admin Management                              */
+/* -------------------------------------------------------------------------- */
+
+// Admin-only appointment status update.
+router.patch(
+  "/:id/status",
+  authMiddleware,
+  roleMiddleware("admin"),
+  bookingRateLimiter,
+  appointmentController.updateAppointmentStatus
+);
+
+// Admin-only appointment listing and filtering.
+router.get(
+  "/all",
+  authMiddleware,
+  roleMiddleware("admin"),
+  appointmentController.getAllAppointments
+);
 
 module.exports = router;
