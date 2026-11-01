@@ -24,7 +24,7 @@ export default function Login() {
       if (!res.ok) {
         setError(json.message || "Login failed");
       } else {
-        router.push("/portal");
+        router.push(json.user?.role === "admin" ? "/admin" : "/portal");
         router.refresh();
       }
     } catch {

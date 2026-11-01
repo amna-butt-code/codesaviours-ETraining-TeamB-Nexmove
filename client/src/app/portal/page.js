@@ -92,6 +92,7 @@ export default async function Portal() {
   try {
     user = JSON.parse(store.get("nx_user")?.value || "{}");
   } catch {
+    if (user.role === "admin") redirect("/admin");
     user = {};
   }
 
