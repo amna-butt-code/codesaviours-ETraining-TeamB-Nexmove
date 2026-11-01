@@ -14,6 +14,9 @@ export default async function AdminLayout({ children }) {
         <Link href="/admin" className="font-semibold">Dashboard</Link>
         <Link href="/admin/messages" className="underline">Messages</Link>
         <Link href="/admin/appointments" className="underline">Appointments</Link>
+        <Link href="/admin/services" className="underline">Services</Link>
+<Link href="/admin/therapists" className="underline">Therapists</Link>
+<Link href="/admin/reviews" className="underline">Reviews</Link>
       </nav>
       {children}
     </div>

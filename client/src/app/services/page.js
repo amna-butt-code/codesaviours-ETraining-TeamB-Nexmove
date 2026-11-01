@@ -190,7 +190,7 @@ export default async function Services() {
             The session fee is PKR 1,500. Displayed durations are
             estimates for appointment scheduling, not guaranteed
             treatment times. Actual session duration may vary according
-            to the patient's assessment and treatment requirements.
+            to the patient&apos;s assessment and treatment requirements.
             Contact the clinic if you need further information.
           </p>
         </div>

@@ -1,28 +1,32 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function Messages() {
   const [list, setList] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  async function load() {
-    setLoading(true);
-    setError("");
+  const load = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/messages");
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) setError(j.message || "Could not load messages.");
-      else setList(Array.isArray(j.data) ? j.data : Array.isArray(j) ? j : []);
+      if (!res.ok) {
+        setError(j.message || "Could not load messages.");
+      } else {
+        setError("");
+        setList(Array.isArray(j.data) ? j.data : Array.isArray(j) ? j : []);
+      }
     } catch {
       setError("Could not load messages.");
     }
     setLoading(false);
-  }
+  }, []);
 
   useEffect(() => {
-    load();
-  }, []);
+    (async () => {
+      await load();
+    })();
+  }, [load]);
 
   async function setStatus(id, status) {
     const res = await fetch(`/api/admin/messages/${id}`, {
